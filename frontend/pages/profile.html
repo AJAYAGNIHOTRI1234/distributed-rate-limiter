@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RateGuard — Profile</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <style>
+    .shell {
+      display:grid;
+      grid-template-columns:220px 1fr;
+      grid-template-rows:52px 1fr;
+      min-height:100vh;
+    }
+
+    /* Topbar */
+    .topbar {
+      grid-column:1 / -1;
+      background:var(--bg2);
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; padding:0 20px; gap:14px;
+    }
+    .logo { display:flex; align-items:center; gap:9px; cursor:pointer; }
+    .logo-mark {
+      width:28px; height:28px; background:var(--accent);
+      border-radius:7px; display:flex; align-items:center; justify-content:center;
+      font-family:var(--display); font-weight:800; font-size:11px; color:#020d0a;
+    }
+    .logo-name { font-family:var(--display); font-size:15px; font-weight:800; letter-spacing:-0.3px; }
+    .topbar-spacer { flex:1; }
+
+    .user-pill {
+      display:flex; align-items:center; gap:8px;
+      background:var(--bg3); border:1px solid var(--border2);
+      border-radius:99px; padding:4px 14px 4px 4px;
+      font-size:12px; font-family:var(--display);
+    }
+    .user-avatar {
+      width:26px; height:26px; border-radius:50%;
+      background:var(--accent); color:#020d0a;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:800; font-size:10px; font-family:var(--display);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background:var(--bg2); border-right:1px solid var(--border);
+      padding:20px 0; display:flex; flex-direction:column; gap:4px;
+    }
+    .nav-section { padding:0 12px; margin-bottom:4px; }
+    .nav-label {
+      font-size:9px; font-weight:600; text-transform:uppercase;
+      letter-spacing:.1em; color:var(--muted); padding:8px 8px 4px;
+      font-family:var(--display);
+    }
+    .nav-item {
+      display:flex; align-items:center; gap:9px;
+      padding:8px 10px; border-radius:8px;
+      font-size:12px; font-family:var(--display); font-weight:500;
+      color:var(--muted2); cursor:pointer; transition:all .15s;
+      user-select:none;
+    }
+    .nav-item:hover { background:var(--bg3); color:var(--text); }
+    .nav-item.active { background:rgba(0,229,168,.08); color:var(--accent); }
+    .nav-icon { width:16px; height:16px; opacity:.7; }
+    .nav-item.active .nav-icon { opacity:1; }
+
+    /* Main content */
+    .main { padding:40px; overflow-y:auto; display:flex; flex-direction:column; gap:32px; max-width:900px; margin:0 auto; width:100%; }
+
+    .profile-header {
+      display:flex; align-items:center; gap:24px;
+    }
+    .profile-img-large {
+      width:80px; height:80px; border-radius:24px;
+      background:var(--accent); color:#020d0a;
+      display:flex; align-items:center; justify-content:center;
+      font-size:32px; font-weight:800; font-family:var(--display);
+      box-shadow:0 8px 32px rgba(0,229,168,0.15);
+    }
+    .profile-info h1 { font-family:var(--display); font-size:28px; font-weight:800; letter-spacing:-0.5px; }
+    .profile-info p { font-size:14px; color:var(--muted2); margin-top:2px; font-family:var(--display); }
+
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+
+    .card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:24px;
+      display:flex; flex-direction:column; gap:20px;
+    }
+    .card-title { font-family:var(--display); font-size:14px; font-weight:700; color:var(--text); }
+
+    .info-row { display:flex; flex-direction:column; gap:4px; }
+    .info-label { font-size:10px; text-transform:uppercase; color:var(--muted); font-family:var(--display); letter-spacing:.05em; }
+    .info-value { font-size:13px; color:var(--text); font-family:var(--mono); }
+
+    .plan-box {
+      background:rgba(0,229,168,0.05); border:1px solid rgba(0,229,168,0.15);
+      border-radius:var(--radius); padding:16px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .plan-details h4 { font-family:var(--display); font-size:15px; color:var(--accent); }
+    .plan-details p { font-size:11px; color:var(--muted2); margin-top:2px; }
+
+    .danger-zone { border-color:rgba(240,96,96,0.2); }
+    .danger-title { color:var(--danger); }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo" onclick="window.location.href='dashboard.html'">
+      <div class="logo-mark">RG</div>
+      <div class="logo-name">RateGuard</div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <button class="btn-icon" id="theme-toggle" title="Toggle Light/Dark Mode" style="background:var(--bg3);border:1px solid var(--border2);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--text);cursor:pointer;outline:none">
+      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+    </button>
+    <div class="user-pill" style="cursor: pointer" onclick="handleLogout()">
+      <div class="user-avatar" id="nav-initials">?</div>
+      <span id="nav-name" style="font-size:12.5px">Loading…</span>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item" onclick="window.location.href='dashboard.html'">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="5" width="12" height="9" rx="2"/><path d="M5 5V3.5a3 3 0 016 0V5"/>
+        </svg>
+        API Keys
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="2,12 5,8 8,10 11,5 14,7"/><rect x="2" y="2" width="12" height="12" rx="2"/>
+        </svg>
+        Analytics
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Account</div>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+        </svg>
+        Profile
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M3.5 12.5l.7-.7M11.8 4.2l.7-.7"/>
+        </svg>
+        Settings
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="profile-header">
+      <div class="profile-img-large" id="profile-initials">?</div>
+      <div class="profile-info">
+        <h1 id="profile-name">Loading…</h1>
+        <p id="profile-email">Loading email…</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Account Info -->
+      <div class="card">
+        <div class="card-title">Account Details</div>
+        <div class="info-row">
+          <div class="info-label">Member Since</div>
+          <div class="info-value" id="profile-created">Loading…</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Authentication</div>
+          <div class="info-value">Google OAuth 2.0</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Role</div>
+          <div class="info-value" id="profile-role">User</div>
+        </div>
+      </div>
+
+      <!-- Plan Info -->
+      <div class="card">
+        <div class="card-title">Current Plan</div>
+        <div class="plan-box">
+          <div class="plan-details">
+            <h4 id="plan-name">Free Tier</h4>
+            <p id="plan-desc">Up to 3 API keys · 1k req/min</p>
+          </div>
+          <span class="badge badge-active">Active</span>
+        </div>
+        <button class="btn btn-secondary" style="width:100%;justify-content:center">Upgrade Plan</button>
+      </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="card danger-zone">
+      <div class="card-title danger-title">Danger Zone</div>
+      <p class="muted2" style="font-size:12px;font-family:var(--display)">Permanently delete your account and all associated API keys. This action cannot be undone.</p>
+      <button class="btn btn-danger" style="width:fit-content">Delete Account</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../components/api.js"></script>
+<script>
+  requireAuth();
+
+  async function loadProfile() {
+    const cached = Auth.getUser();
+    if (cached) applyUser(cached);
+    
+    const resp = await apiFetch("/auth/me");
+    if (resp && resp.ok) {
+      const u = await resp.json();
+      Auth.setUser(u);
+      applyUser(u);
+    }
+  }
+
+  function applyUser(user) {
+    const initials = user.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+    
+    // Topbar
+    document.getElementById("nav-name").textContent = user.name;
+    document.getElementById("nav-initials").textContent = initials;
+
+    // Profile Page
+    document.getElementById("profile-name").textContent = user.name;
+    document.getElementById("profile-email").textContent = user.email;
+    document.getElementById("profile-initials").textContent = initials;
+    document.getElementById("profile-created").textContent = new Date(user.created_at).toLocaleDateString(undefined, {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+    document.getElementById("profile-role").textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+    
+    const planName = user.plan.charAt(0).toUpperCase() + user.plan.slice(1);
+    document.getElementById("plan-name").textContent = planName + " Plan";
+    
+    const limits = {
+      free: "3 API keys · 1k req/min",
+      pro: "20 API keys · 50k req/min",
+      enterprise: "100+ API keys · Unlimited"
+    };
+    document.getElementById("plan-desc").textContent = limits[user.plan] || limits.free;
+  }
+
+  // Theme handling
+  const themeToggle = document.getElementById("theme-toggle");
+  const themeIcon = document.getElementById("theme-icon");
+  
+  function applyTheme(theme) {
+    if (theme === "light") {
+      document.documentElement.classList.add("light-mode");
+      themeIcon.innerHTML = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+    } else {
+      document.documentElement.classList.remove("light-mode");
+      themeIcon.innerHTML = `<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>`;
+    }
+  }
+
+  themeToggle.addEventListener("click", () => {
+    const isLight = document.documentElement.classList.contains("light-mode");
+    const newTheme = isLight ? "dark" : "light";
+    localStorage.setItem("rg-theme", newTheme);
+    applyTheme(newTheme);
+  });
+
+  const savedTheme = localStorage.getItem("rg-theme") || "dark";
+  applyTheme(savedTheme);
+
+  async function handleLogout() {
+    if (!confirm("Are you sure you want to sign out?")) return;
+    const refresh = Auth.getRefresh();
+    if (refresh) await apiFetch("/auth/logout",{method:"POST",body:JSON.stringify({refresh_token:refresh})});
+    Auth.clear();
+    window.location.href = "login.html";
+  }
+
+  loadProfile();
+</script>
+</body>
+</html>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RateGuard — Dashboard</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <style>
+    .shell {
+      display:grid;
+      grid-template-columns:220px 1fr;
+      grid-template-rows:52px 1fr;
+      min-height:100vh;
+    }
+
+    /* Topbar */
+    .topbar {
+      grid-column:1 / -1;
+      background:var(--bg2);
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; padding:0 20px; gap:14px;
+    }
+    .logo { display:flex; align-items:center; gap:9px; }
+    .logo-mark {
+      width:28px; height:28px; background:var(--accent);
+      border-radius:7px; display:flex; align-items:center; justify-content:center;
+      font-family:var(--display); font-weight:800; font-size:11px; color:#020d0a;
+    }
+    .logo-name { font-family:var(--display); font-size:15px; font-weight:800; letter-spacing:-0.3px; }
+    .topbar-spacer { flex:1; }
+
+    .topbar-search {
+      display:flex; align-items:center; gap:8px;
+      background:var(--bg3); border:1px solid var(--border);
+      border-radius:var(--radius); padding:6px 12px;
+      font-size:11.5px; color:var(--muted); font-family:var(--display);
+      cursor:pointer; transition:border-color .15s;
+    }
+    .topbar-search:hover { border-color:var(--border2); color:var(--muted2); }
+    .topbar-search kbd {
+      background:var(--bg4); border:1px solid var(--border2);
+      border-radius:4px; padding:1px 5px; font-size:10px; font-family:var(--mono);
+    }
+
+    .user-pill {
+      display:flex; align-items:center; gap:8px;
+      background:var(--bg3); border:1px solid var(--border2);
+      border-radius:99px; padding:4px 14px 4px 4px;
+      font-size:12px; font-family:var(--display); cursor:pointer;
+      transition:border-color .15s;
+    }
+    .user-pill:hover { border-color:var(--border3); }
+    .user-avatar {
+      width:26px; height:26px; border-radius:50%;
+      background:var(--accent); color:#020d0a;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:800; font-size:10px; font-family:var(--display);
+      flex-shrink:0;
+    }
+    .btn-logout {
+      background:none; border:none; color:var(--muted);
+      font-size:11px; cursor:pointer; padding:4px 8px;
+      border-radius:5px; font-family:var(--display);
+      transition:color .15s;
+    }
+    .btn-logout:hover { color:var(--danger); }
+
+    /* Sidebar */
+    .sidebar {
+      background:var(--bg2); border-right:1px solid var(--border);
+      padding:20px 0; display:flex; flex-direction:column; gap:4px;
+    }
+    .nav-section { padding:0 12px; margin-bottom:4px; }
+    .nav-label {
+      font-size:9px; font-weight:600; text-transform:uppercase;
+      letter-spacing:.1em; color:var(--muted); padding:8px 8px 4px;
+      font-family:var(--display);
+    }
+    .nav-item {
+      display:flex; align-items:center; gap:9px;
+      padding:8px 10px; border-radius:8px;
+      font-size:12px; font-family:var(--display); font-weight:500;
+      color:var(--muted2); cursor:pointer; transition:all .15s;
+      user-select:none;
+    }
+    .nav-item:hover { background:var(--bg3); color:var(--text); }
+    .nav-item.active { background:rgba(0,229,168,.08); color:var(--accent); }
+    .nav-icon { width:16px; height:16px; opacity:.7; }
+    .nav-item.active .nav-icon { opacity:1; }
+    .nav-badge {
+      margin-left:auto; font-size:9px; padding:2px 6px;
+      background:var(--bg4); border-radius:99px; color:var(--muted);
+      font-family:var(--mono);
+    }
+    .sidebar-divider { height:1px; background:var(--border); margin:8px 12px; }
+
+    /* Main content */
+    .main { padding:28px; overflow-y:auto; display:flex; flex-direction:column; gap:24px; }
+
+    /* Page header */
+    .page-header { display:flex; align-items:flex-start; justify-content:space-between; }
+    .page-title  { font-family:var(--display); font-size:22px; font-weight:800; letter-spacing:-0.4px; }
+    .page-sub    { font-size:12px; color:var(--muted2); margin-top:3px; font-family:var(--display); }
+
+    /* Stat cards */
+    .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    .stat-card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:18px 20px;
+      position:relative; overflow:hidden; transition:border-color .2s;
+    }
+    .stat-card:hover { border-color:var(--border2); }
+    .stat-accent {
+      position:absolute; top:0; left:0; right:0; height:2px;
+      background:var(--card-clr, var(--accent));
+    }
+    .stat-label {
+      font-size:10px; font-weight:600; text-transform:uppercase;
+      letter-spacing:.07em; color:var(--muted); margin-bottom:8px;
+      font-family:var(--display);
+    }
+    .stat-value {
+      font-family:var(--display); font-size:28px; font-weight:800;
+      line-height:1; letter-spacing:-0.5px;
+    }
+    .stat-note { font-size:11px; color:var(--muted); margin-top:5px; font-family:var(--display); }
+    .stat-trend { display:inline-flex; align-items:center; gap:3px; font-size:10.5px; margin-top:4px; font-family:var(--display); }
+    .trend-up   { color:var(--accent); }
+    .trend-down { color:var(--danger); }
+
+    /* Key list */
+    .key-item {
+      display:flex; align-items:center; gap:14px;
+      padding:14px 20px; border-bottom:1px solid var(--border);
+      transition:background .1s;
+    }
+    .key-item:last-child { border-bottom:none; }
+    .key-item:hover { background:rgba(255,255,255,0.015); }
+
+    .key-dot {
+      width:8px; height:8px; border-radius:50%; flex-shrink:0;
+    }
+    .key-dot.active   { background:var(--accent); box-shadow:0 0 8px rgba(0,229,168,.4); }
+    .key-dot.inactive { background:var(--muted); }
+
+    .key-info { flex:1; min-width:0; }
+    .key-name { font-size:13px; font-weight:600; font-family:var(--display); margin-bottom:3px; }
+    .key-preview {
+      font-size:11px; color:var(--blue); font-family:var(--mono);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .key-meta { font-size:10.5px; color:var(--muted); margin-top:3px; font-family:var(--display); }
+    .key-actions { display:flex; gap:6px; flex-shrink:0; }
+
+    /* Usage bar */
+    .usage-wrap { padding:0 20px 16px; }
+    .usage-label {
+      display:flex; justify-content:space-between;
+      font-size:10.5px; color:var(--muted); font-family:var(--display); margin-bottom:6px;
+    }
+    .usage-bar { height:4px; background:var(--bg4); border-radius:99px; overflow:hidden; }
+    .usage-fill { height:100%; background:var(--accent); border-radius:99px; transition:width .5s ease; }
+
+    /* Modal */
+    .modal-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.65);
+      display:none; align-items:center; justify-content:center; z-index:100;
+      backdrop-filter:blur(4px);
+    }
+    .modal {
+      background:var(--bg2); border:1px solid var(--border2);
+      border-radius:var(--radius-xl); padding:30px;
+      width:420px; display:flex; flex-direction:column; gap:20px;
+      animation:modalIn .2s ease;
+      box-shadow:0 24px 64px rgba(0,0,0,.6);
+    }
+    @keyframes modalIn {
+      from { opacity:0; transform:scale(.96) translateY(8px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+    .modal-title { font-family:var(--display); font-size:17px; font-weight:800; letter-spacing:-.3px; }
+    .modal-close {
+      position:absolute; top:16px; right:16px;
+      background:var(--bg3); border:1px solid var(--border2);
+      border-radius:6px; width:28px; height:28px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; color:var(--muted); font-size:14px; transition:all .15s;
+    }
+    .modal-close:hover { color:var(--text); border-color:var(--border3); }
+
+    .key-reveal-box {
+      background:rgba(0,229,168,.04); border:1px solid rgba(0,229,168,.2);
+      border-radius:var(--radius); padding:14px 16px;
+      font-family:var(--mono); font-size:11.5px; color:var(--accent);
+      word-break:break-all; line-height:1.7; display:none;
+    }
+    .key-warn {
+      font-size:11px; color:var(--warn); font-family:var(--display);
+      display:flex; align-items:center; gap:6px; margin-top:-8px;
+    }
+
+    /* Empty state */
+    .empty-state { padding:56px 24px; text-align:center; }
+    .empty-icon {
+      width:52px; height:52px; border-radius:14px;
+      background:var(--bg3); border:1px solid var(--border2);
+      display:inline-flex; align-items:center; justify-content:center;
+      font-size:22px; margin-bottom:14px;
+    }
+    .empty-title { font-family:var(--display); font-size:14px; font-weight:700; margin-bottom:6px; }
+    .empty-desc  { font-size:12px; color:var(--muted2); font-family:var(--display); max-width:280px; margin:0 auto; }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-mark">RG</div>
+      <div class="logo-name">RateGuard</div>
+    </div>
+    <div class="topbar-search">
+      Search keys… <kbd>⌘K</kbd>
+    </div>
+    <div class="topbar-spacer"></div>
+    <button class="btn-icon" id="theme-toggle" title="Toggle Light/Dark Mode" style="background:var(--bg3);border:1px solid var(--border2);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--text);cursor:pointer;outline:none">
+      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Icon will be injected by JS -->
+      </svg>
+    </button>
+    <div class="user-pill" id="user-pill" style="cursor: pointer" onclick="window.location.href='profile.html'">
+      <div class="user-avatar" id="user-initials">?</div>
+      <span id="user-name" style="font-size:12.5px">Loading…</span>
+    </div>
+    <button class="btn-logout" id="logout-btn" onclick="handleLogout()">Sign out</button>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="5" width="12" height="9" rx="2"/><path d="M5 5V3.5a3 3 0 016 0V5"/>
+        </svg>
+        API Keys
+      </div>
+      <div class="nav-item" onclick="window.location.href='analytics.html'">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="2,12 5,8 8,10 11,5 14,7"/><rect x="2" y="2" width="12" height="12" rx="2"/>
+        </svg>
+        Analytics
+        <span class="nav-badge">Phase 5</span>
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="nav-section">
+      <div class="nav-label">Account</div>
+      <div class="nav-item" onclick="window.location.href='profile.html'">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+        </svg>
+        Profile
+      </div>
+      <div class="nav-item" onclick="window.location.href='settings.html'">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M3.5 12.5l.7-.7M11.8 4.2l.7-.7"/>
+        </svg>
+        Settings
+      </div>
+      <div class="nav-item" onclick="window.location.href='billing.html'">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8h6M8 5l3 3-3 3"/>
+        </svg>
+        Plan & billing
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">API Keys</div>
+        <div class="page-sub">Create and manage keys for your applications</div>
+      </div>
+      <button class="btn btn-primary" id="open-create-btn">+ New Key</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-grid">
+      <div class="stat-card" style="--card-clr:var(--accent)">
+        <div class="stat-accent"></div>
+        <div class="stat-label">Active Keys</div>
+        <div class="stat-value" id="stat-active">–</div>
+        <div class="stat-note" id="stat-plan-limit">of – allowed</div>
+      </div>
+      <div class="stat-card" style="--card-clr:var(--blue)">
+        <div class="stat-accent"></div>
+        <div class="stat-label">Total Requests</div>
+        <div class="stat-value" id="stat-requests">–</div>
+        <div class="stat-note">all time</div>
+      </div>
+      <div class="stat-card" style="--card-clr:#a78bfa">
+        <div class="stat-accent"></div>
+        <div class="stat-label">Current Plan</div>
+        <div class="stat-value" id="stat-plan" style="font-size:20px;margin-top:4px">–</div>
+        <div class="stat-note" id="stat-plan-note">–</div>
+      </div>
+      <div class="stat-card" style="--card-clr:var(--warn)">
+        <div class="stat-accent"></div>
+        <div class="stat-label">Last Activity</div>
+        <div class="stat-value" id="stat-last" style="font-size:15px;margin-top:6px">–</div>
+        <div class="stat-note">most recent key use</div>
+      </div>
+    </div>
+
+    <!-- Keys table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Your keys</div>
+        <span id="keys-count" style="font-size:11px;color:var(--muted);font-family:var(--display)"></span>
+      </div>
+      <div id="keys-list">
+        <div class="empty-state">
+          <div class="empty-icon">🔑</div>
+          <div class="empty-title">No keys yet</div>
+          <div class="empty-desc">Create your first API key to start protecting your services.</div>
+        </div>
+      </div>
+      <div class="usage-wrap" id="usage-wrap" style="display:none">
+        <div class="usage-label">
+          <span>Key usage</span>
+          <span id="usage-text">0 / 0</span>
+        </div>
+        <div class="usage-bar"><div class="usage-fill" id="usage-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Key Modal -->
+<div class="modal-overlay" id="create-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" id="close-modal-btn">✕</button>
+    <div class="modal-title">New API key</div>
+
+    <div id="key-reveal-wrap" style="display:none;flex-direction:column;gap:10px">
+      <div class="key-reveal-box" id="key-reveal"></div>
+      <div class="key-warn">⚠ Copy this key now — it will never be shown again.</div>
+      <button class="btn btn-secondary btn-sm" id="copy-key-btn" style="align-self:flex-start">Copy to clipboard</button>
+    </div>
+
+    <div id="create-fields" style="display:flex;flex-direction:column;gap:16px">
+      <div class="form-group">
+        <label class="form-label">Key name</label>
+        <input class="form-input" id="key-name-input" placeholder="e.g. Production backend" maxlength="80">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Scopes</label>
+        <select class="form-input" id="key-scopes-input">
+          <option value="read">read</option>
+          <option value="read,write">read, write</option>
+          <option value="read,write,admin">read, write, admin</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px" id="modal-actions">
+      <button class="btn btn-primary" id="create-key-btn">Create key</button>
+      <button class="btn btn-secondary" id="cancel-modal-btn">Cancel</button>
+    </div>
+    <div id="modal-actions-done" style="display:none">
+      <button class="btn btn-secondary" id="done-btn">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../components/api.js"></script>
+<script>
+  requireAuth();
+  const PLAN_LIMITS = { free:3, pro:20, enterprise:100 };
+
+  async function loadUser() {
+    const cached = Auth.getUser();
+    if (cached) applyUser(cached);
+    const resp = await apiFetch("/auth/me");
+    if (resp && resp.ok) { const u = await resp.json(); Auth.setUser(u); applyUser(u); }
+  }
+
+  function applyUser(user) {
+    document.getElementById("user-name").textContent = user.name;
+    const initials = user.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+    document.getElementById("user-initials").textContent = initials;
+    const plan = user.plan.charAt(0).toUpperCase() + user.plan.slice(1);
+    document.getElementById("stat-plan").textContent = plan;
+    const limit = PLAN_LIMITS[user.plan] || 3;
+    document.getElementById("stat-plan-limit").textContent = `of ${limit} allowed`;
+    document.getElementById("stat-plan-note").textContent = `${limit} keys max`;
+  }
+
+  async function loadKeys() {
+    const resp = await apiFetch("/keys");
+    if (!resp || !resp.ok) return;
+    renderKeys(await resp.json());
+  }
+
+  function renderKeys(keys) {
+    const container = document.getElementById("keys-list");
+    const active = keys.filter(k=>k.is_active);
+    document.getElementById("stat-active").textContent = active.length;
+    document.getElementById("keys-count").textContent = `${keys.length} total`;
+    const totalReq = keys.reduce((s,k)=>s+k.request_count,0);
+    document.getElementById("stat-requests").textContent = totalReq.toLocaleString();
+    const lastUsed = keys.filter(k=>k.last_used).sort((a,b)=>new Date(b.last_used)-new Date(a.last_used))[0];
+    document.getElementById("stat-last").textContent = lastUsed ? new Date(lastUsed.last_used).toLocaleDateString() : "Never";
+
+    const user = Auth.getUser();
+    if (user) {
+      const limit = PLAN_LIMITS[user.plan] || 3;
+      const pct = Math.round((active.length / limit) * 100);
+      document.getElementById("usage-wrap").style.display = "block";
+      document.getElementById("usage-text").textContent = `${active.length} / ${limit}`;
+      document.getElementById("usage-fill").style.width = pct + "%";
+    }
+
+    if (!keys.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🔑</div>
+          <div class="empty-title">No keys yet</div>
+          <div class="empty-desc">Create your first API key to start protecting your services.</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = keys.map(k=>`
+      <div class="key-item" data-id="${k.id}">
+        <div class="key-dot ${k.is_active?'active':'inactive'}"></div>
+        <div class="key-info">
+          <div class="key-name">${esc(k.name)}</div>
+          <div class="key-preview">${esc(k.key_preview)}</div>
+          <div class="key-meta">
+            ${k.scopes.join(", ")} &nbsp;·&nbsp;
+            ${k.request_count.toLocaleString()} req &nbsp;·&nbsp;
+            ${new Date(k.created_at).toLocaleDateString()}
+          </div>
+        </div>
+        <span class="badge badge-${k.plan}">${k.plan}</span>
+        <div class="key-actions">
+          <button class="btn btn-secondary btn-sm" onclick="rotateKey('${k.id}')">Rotate</button>
+          <button class="btn btn-danger btn-sm" onclick="revokeKey('${k.id}')">Revoke</button>
+        </div>
+      </div>`).join("");
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  async function revokeKey(id) {
+    if (!confirm("Revoke this key? This cannot be undone.")) return;
+    const resp = await apiFetch(`/keys/${id}`,{method:"DELETE"});
+    if (resp && resp.status===204) { toast("Key revoked","success"); loadKeys(); }
+    else toast("Failed to revoke key","error");
+  }
+
+  async function rotateKey(id) {
+    if (!confirm("Rotate key? The old key stops working immediately.")) return;
+    const resp = await apiFetch(`/keys/${id}/rotate`,{method:"POST"});
+    if (resp && resp.ok) { const d = await resp.json(); showReveal(d.raw_key); loadKeys(); }
+    else toast("Failed to rotate key","error");
+  }
+
+  function showReveal(rawKey) {
+    document.getElementById("key-reveal-wrap").style.display = "flex";
+    document.getElementById("key-reveal").style.display = "block";
+    document.getElementById("key-reveal").textContent = rawKey;
+    document.getElementById("create-fields").style.display = "none";
+    document.getElementById("modal-actions").style.display = "none";
+    document.getElementById("modal-actions-done").style.display = "block";
+    document.getElementById("create-modal").style.display = "flex";
+    toast("Key ready — copy it now","success");
+  }
+
+  document.getElementById("open-create-btn").addEventListener("click",()=>{
+    document.getElementById("key-name-input").value="";
+    document.getElementById("key-reveal-wrap").style.display="none";
+    document.getElementById("key-reveal").style.display="none";
+    document.getElementById("create-fields").style.display="flex";
+    document.getElementById("modal-actions").style.display="flex";
+    document.getElementById("modal-actions-done").style.display="none";
+    document.getElementById("create-modal").style.display="flex";
+  });
+
+  const closeModal = () => document.getElementById("create-modal").style.display="none";
+  document.getElementById("close-modal-btn").addEventListener("click",closeModal);
+  document.getElementById("cancel-modal-btn").addEventListener("click",closeModal);
+  document.getElementById("done-btn").addEventListener("click",closeModal);
+  document.getElementById("create-modal").addEventListener("click",e=>{ if(e.target===e.currentTarget)closeModal(); });
+
+  document.getElementById("create-key-btn").addEventListener("click",async()=>{
+    const name = document.getElementById("key-name-input").value.trim();
+    if (!name) { toast("Enter a key name","error"); return; }
+    const scopes = document.getElementById("key-scopes-input").value.split(",").map(s=>s.trim());
+    const resp = await apiFetch("/keys",{method:"POST",body:JSON.stringify({name,scopes})});
+    if (resp && resp.ok) { const d = await resp.json(); showReveal(d.raw_key); loadKeys(); }
+    else { const e=resp?await resp.json():{}; toast(e.detail||"Failed to create key","error"); }
+  });
+
+  document.getElementById("copy-key-btn").addEventListener("click",()=>{
+    navigator.clipboard.writeText(document.getElementById("key-reveal").textContent)
+      .then(()=>toast("Key copied to clipboard","success"));
+  });
+
+  async function handleLogout() {
+    try {
+      const refresh = Auth.getRefresh();
+      if (refresh) await apiFetch("/auth/logout",{method:"POST",body:JSON.stringify({refresh_token:refresh})});
+    } catch (e) {
+      console.warn("Backend logout failed, proceeding with local logout", e);
+    } finally {
+      Auth.clear();
+      window.location.href = "login.html";
+    }
+  }
+
+  // Theme handling
+  const themeToggle = document.getElementById("theme-toggle");
+  const themeIcon = document.getElementById("theme-icon");
+  
+  function applyTheme(theme) {
+    if (theme === "light") {
+      document.documentElement.classList.add("light-mode");
+      themeIcon.innerHTML = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+    } else {
+      document.documentElement.classList.remove("light-mode");
+      themeIcon.innerHTML = `<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>`;
+    }
+  }
+
+  themeToggle.addEventListener("click", () => {
+    const isLight = document.documentElement.classList.contains("light-mode");
+    const newTheme = isLight ? "dark" : "light";
+    localStorage.setItem("rg-theme", newTheme);
+    applyTheme(newTheme);
+  });
+
+  const savedTheme = localStorage.getItem("rg-theme") || "dark";
+  applyTheme(savedTheme);
+
+  loadUser();
+  loadKeys();
+</script>
+</body>
+</html>

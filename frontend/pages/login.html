@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RateGuard — Sign in</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <style>
+    body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .left {
+      display: flex; align-items: center; justify-content: center;
+      padding: 60px 64px;
+    }
+    .login-box {
+      width: 100%; max-width: 360px;
+      display: flex; flex-direction: column; gap: 32px;
+      animation: fadeUp .5s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(20px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .logo-mark {
+      width:36px; height:36px; background:var(--accent);
+      border-radius:9px; display:flex; align-items:center; justify-content:center;
+      font-family:var(--display); font-weight:800; font-size:14px; color:#020d0a;
+    }
+    .logo-name { font-family:var(--display); font-size:18px; font-weight:800; letter-spacing:-0.3px; }
+    .login-heading h1 {
+      font-family:var(--display); font-size:30px; font-weight:800;
+      letter-spacing:-0.5px; line-height:1.15; margin-bottom:8px;
+    }
+    .login-heading p { font-size:12.5px; color:var(--muted2); line-height:1.6; }
+    .login-card {
+      background:var(--bg2); border:1px solid var(--border2);
+      border-radius:var(--radius-xl); padding:28px;
+      display:flex; flex-direction:column; gap:18px;
+    }
+    .btn-google {
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      padding:13px; background:var(--bg3); border:1px solid var(--border2);
+      border-radius:var(--radius); color:var(--text); font-size:13px;
+      font-weight:600; font-family:var(--display); transition:all .18s;
+      cursor:pointer; text-decoration:none; width:100%;
+    }
+    .btn-google:hover {
+      background:var(--bg4); border-color:var(--border3);
+      transform:translateY(-1px); box-shadow:0 4px 20px rgba(0,0,0,.3);
+    }
+    .btn-google svg { width:18px; height:18px; flex-shrink:0; }
+    .divider {
+      display:flex; align-items:center; gap:10px;
+      color:var(--muted); font-size:10.5px; font-family:var(--display);
+      text-transform:uppercase; letter-spacing:.06em;
+    }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
+    .callback-banner {
+      background:rgba(0,229,168,0.07); border:1px solid rgba(0,229,168,0.2);
+      border-radius:var(--radius); padding:13px 16px;
+      font-size:12px; font-family:var(--display); color:var(--accent);
+      display:none; align-items:center; gap:10px;
+    }
+    .footer-links {
+      display:flex; justify-content:center; gap:16px;
+      font-size:11px; color:var(--muted); font-family:var(--display);
+    }
+    .footer-links a:hover { color:var(--muted2); }
+
+    /* Right panel */
+    .right {
+      position:relative; overflow:hidden;
+      background:var(--bg2); border-left:1px solid var(--border);
+      display:flex; flex-direction:column; justify-content:flex-end; padding:48px;
+    }
+    .grid-bg {
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(rgba(0,229,168,0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,168,0.045) 1px, transparent 1px);
+      background-size:44px 44px;
+    }
+    .grid-fade {
+      position:absolute; inset:0;
+      background:radial-gradient(ellipse at 60% 35%, rgba(0,229,168,0.07) 0%, transparent 65%);
+    }
+    .float-cards { position:absolute; inset:0; pointer-events:none; }
+    .float-card {
+      position:absolute; background:var(--bg3); border:1px solid var(--border2);
+      border-radius:var(--radius-lg); padding:14px 18px;
+      animation:float 6s ease-in-out infinite;
+      backdrop-filter:blur(4px);
+    }
+    .float-card:nth-child(1) { top:18%; left:8%;  animation-delay:0s;   animation-duration:7s; }
+    .float-card:nth-child(2) { top:12%; right:8%; animation-delay:1.5s; animation-duration:6s; }
+    .float-card:nth-child(3) { top:52%; left:12%; animation-delay:.8s;  animation-duration:8s; }
+    .float-card:nth-child(4) { top:44%; right:6%; animation-delay:2s;   animation-duration:7s; }
+    @keyframes float {
+      0%,100% { transform:translateY(0); }
+      50%      { transform:translateY(-10px); }
+    }
+    .fc-label { font-size:9.5px; color:var(--muted); font-family:var(--display); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+    .fc-value { font-family:var(--display); font-size:22px; font-weight:800; }
+    .fc-value.green { color:var(--accent); }
+    .fc-value.blue  { color:var(--blue); }
+    .fc-note  { font-size:10px; color:var(--muted); margin-top:2px; }
+    .fc-bar   { margin-top:8px; height:3px; background:var(--border2); border-radius:99px; overflow:hidden; }
+    .fc-fill  { height:100%; border-radius:99px; }
+    .right-copy { position:relative; z-index:1; }
+    .right-copy h2 {
+      font-family:'Instrument Serif', serif; font-size:38px; font-style:italic;
+      line-height:1.2; color:var(--text); margin-bottom:16px;
+    }
+    .right-copy h2 em { color:var(--accent); font-style:italic; }
+    .feature-pills { display:flex; flex-wrap:wrap; gap:8px; }
+    .pill {
+      background:var(--bg3); border:1px solid var(--border2);
+      border-radius:99px; padding:5px 13px;
+      font-size:11px; color:var(--muted2); font-family:var(--display);
+      display:flex; align-items:center; gap:6px;
+    }
+    .pill-dot { width:5px; height:5px; border-radius:50%; background:var(--accent); }
+  </style>
+</head>
+<body>
+
+<div class="left">
+  <div class="login-box">
+    <div class="brand">
+      <div class="logo-mark">RG</div>
+      <div class="logo-name">RateGuard</div>
+    </div>
+
+    <div class="login-heading">
+      <h1>Welcome back.</h1>
+      <p>Sign in to manage your API keys and monitor traffic across all your services.</p>
+    </div>
+
+    <div class="login-card">
+      <div id="callback-banner" class="callback-banner">
+        <div class="dot-pulse"><span></span><span></span><span></span></div>
+        Completing sign-in…
+      </div>
+
+      <a href="http://localhost:8000/api/v1/auth/google/login" class="btn-google" id="google-btn">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </a>
+
+      <div class="divider">or sign in with email</div>
+
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input class="form-input" type="email" placeholder="you@company.com" id="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" placeholder="••••••••••" id="password">
+      </div>
+      <button class="btn btn-primary" id="login-btn" style="width:100%;justify-content:center;padding:12px;">Sign in</button>
+    </div>
+
+    <div class="footer-links">
+      <a href="#">Terms</a>
+      <a href="#">Privacy</a>
+      <a href="#">Docs</a>
+      <a href="register.html">Create account →</a>
+    </div>
+  </div>
+</div>
+
+<div class="right">
+  <div class="grid-bg"></div>
+  <div class="grid-fade"></div>
+  <div class="float-cards">
+    <div class="float-card">
+      <div class="fc-label">Active Keys</div>
+      <div class="fc-value green">12</div>
+      <div class="fc-note">of 20 allowed · Pro</div>
+      <div class="fc-bar"><div class="fc-fill" style="width:60%;background:var(--accent)"></div></div>
+    </div>
+    <div class="float-card">
+      <div class="fc-label">Requests today</div>
+      <div class="fc-value blue">84.2k</div>
+      <div class="fc-note">↑ 18% vs yesterday</div>
+    </div>
+    <div class="float-card" style="min-width:160px">
+      <div class="fc-label">Rate limit hits</div>
+      <div class="fc-value" style="color:var(--warn)">0.3%</div>
+      <div class="fc-note">23 blocked / hour</div>
+      <div class="fc-bar"><div class="fc-fill" style="width:3%;background:var(--warn)"></div></div>
+    </div>
+    <div class="float-card">
+      <div class="fc-label">Avg latency</div>
+      <div class="fc-value green">4ms</div>
+      <div class="fc-note">Redis bucket check</div>
+    </div>
+  </div>
+
+  <div class="right-copy">
+    <h2>Rate limiting that<br><em>actually scales.</em></h2>
+    <div class="feature-pills">
+      <div class="pill"><div class="pill-dot"></div>Token bucket via Redis</div>
+      <div class="pill"><div class="pill-dot"></div>Key rotation & revocation</div>
+      <div class="pill"><div class="pill-dot"></div>Real-time analytics</div>
+      <div class="pill"><div class="pill-dot"></div>Free · Pro · Enterprise</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../components/api.js"></script>
+<script>
+  redirectIfLoggedIn();
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code"), state = params.get("state");
+  if (code && state) {
+    document.getElementById("callback-banner").style.display = "flex";
+    document.getElementById("google-btn").style.display = "none";
+    fetch(`http://localhost:8000/api/v1/auth/google/callback?code=${code}&state=${state}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.tokens) {
+          Auth.setTokens(data.tokens.access_token, data.tokens.refresh_token);
+          Auth.setUser(data.user);
+          window.location.href = "dashboard.html";
+        } else { throw new Error(data.detail || "Auth failed"); }
+      })
+      .catch(err => {
+        document.getElementById("callback-banner").style.display = "none";
+        document.getElementById("google-btn").style.display = "flex";
+        toast("Sign-in failed: " + err.message, "error");
+      });
+    }
+
+  document.getElementById("login-btn").addEventListener("click", async () => {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    if (!email || !password) {
+      toast("Please enter both email and password", "error");
+      return;
+    }
+
+    const btn = document.getElementById("login-btn");
+    btn.disabled = true;
+    btn.innerText = "Signing in...";
+
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Auth.setTokens(data.tokens.access_token, data.tokens.refresh_token);
+        Auth.setUser(data.user);
+        toast("Welcome back!", "success");
+        setTimeout(() => window.location.href = "dashboard.html", 800);
+      } else {
+        toast(data.detail || "Sign-in failed", "error");
+        btn.disabled = false;
+        btn.innerText = "Sign in";
+      }
+    } catch (err) {
+      toast("Network error. Please try again.", "error");
+      btn.disabled = false;
+      btn.innerText = "Sign in";
+    }
+  });
+</script>
+</body>
+</html>

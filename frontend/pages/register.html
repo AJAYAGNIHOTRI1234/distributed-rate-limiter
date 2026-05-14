@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<!-- v1.0.1 -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RateGuard — Create account</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <style>
+    body {
+      display:grid; grid-template-columns:1fr 1fr; min-height:100vh; overflow:hidden;
+    }
+
+    /* Left: form */
+    .left {
+      display:flex; align-items:center; justify-content:center; padding:60px 64px;
+    }
+    .reg-box {
+      width:100%; max-width:380px;
+      display:flex; flex-direction:column; gap:28px;
+      animation:fadeUp .5s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(20px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .logo-mark {
+      width:36px; height:36px; background:var(--accent);
+      border-radius:9px; display:flex; align-items:center; justify-content:center;
+      font-family:var(--display); font-weight:800; font-size:14px; color:#020d0a;
+    }
+    .logo-name { font-family:var(--display); font-size:18px; font-weight:800; letter-spacing:-0.3px; }
+
+    .reg-heading h1 {
+      font-family:var(--display); font-size:28px; font-weight:800;
+      letter-spacing:-0.5px; line-height:1.15; margin-bottom:8px;
+    }
+    .reg-heading p { font-size:12.5px; color:var(--muted2); line-height:1.6; }
+
+    .reg-card {
+      background:var(--bg2); border:1px solid var(--border2);
+      border-radius:var(--radius-xl); padding:28px;
+      display:flex; flex-direction:column; gap:16px;
+    }
+
+    .btn-google {
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      padding:13px; background:var(--bg3); border:1px solid var(--border2);
+      border-radius:var(--radius); color:var(--text); font-size:13px;
+      font-weight:600; font-family:var(--display); transition:all .18s;
+      cursor:pointer; text-decoration:none; width:100%;
+    }
+    .btn-google:hover { background:var(--bg4); border-color:var(--border3); transform:translateY(-1px); }
+    .btn-google svg { width:18px; height:18px; flex-shrink:0; }
+
+    .divider {
+      display:flex; align-items:center; gap:10px;
+      color:var(--muted); font-size:10.5px; font-family:var(--display);
+      text-transform:uppercase; letter-spacing:.06em;
+    }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+    .plan-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .plan-option { position:relative; }
+    .plan-option input[type="radio"] { position:absolute; opacity:0; width:0; height:0; }
+    .plan-label {
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      padding:12px 8px; background:var(--bg3); border:1px solid var(--border2);
+      border-radius:var(--radius); cursor:pointer; transition:all .15s;
+      text-align:center;
+    }
+    .plan-option input:checked + .plan-label {
+      border-color:rgba(0,229,168,0.4); background:rgba(0,229,168,0.05);
+    }
+    .plan-name { font-family:var(--display); font-size:12px; font-weight:700; }
+    .plan-price { font-size:10px; color:var(--muted); }
+    .plan-keys  { font-size:10px; color:var(--accent); }
+    .plan-pop {
+      position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+      background:var(--accent); color:#020d0a;
+      font-size:9px; font-weight:700; font-family:var(--display);
+      padding:2px 8px; border-radius:99px; white-space:nowrap;
+    }
+
+    .terms-row {
+      display:flex; align-items:flex-start; gap:9px;
+    }
+    .terms-row input[type="checkbox"] { margin-top:2px; accent-color:var(--accent); flex-shrink:0; }
+    .terms-row label { font-size:11px; color:var(--muted2); line-height:1.5; font-family:var(--display); }
+    .terms-row a { color:var(--accent); }
+
+    .footer-links {
+      display:flex; justify-content:center; gap:16px;
+      font-size:11px; color:var(--muted); font-family:var(--display);
+    }
+    .footer-links a:hover { color:var(--muted2); }
+
+    /* Right panel */
+    .right {
+      position:relative; overflow:hidden; background:var(--bg2);
+      border-left:1px solid var(--border);
+      display:flex; flex-direction:column; justify-content:center;
+      padding:64px 56px; gap:40px;
+    }
+    .grid-bg {
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(rgba(0,229,168,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,168,0.04) 1px, transparent 1px);
+      background-size:44px 44px;
+    }
+    .grid-fade {
+      position:absolute; inset:0;
+      background:radial-gradient(ellipse at 40% 50%, rgba(0,229,168,0.065) 0%, transparent 65%);
+    }
+    .plan-compare { position:relative; z-index:1; display:flex; flex-direction:column; gap:20px; }
+    .plan-compare-title {
+      font-family:var(--display); font-size:13px; font-weight:700; color:var(--muted2);
+      text-transform:uppercase; letter-spacing:.08em;
+    }
+    .plan-card {
+      background:var(--bg3); border:1px solid var(--border2);
+      border-radius:var(--radius-lg); padding:20px 22px;
+      display:flex; flex-direction:column; gap:10px;
+      transition:border-color .2s;
+    }
+    .plan-card.featured { border-color:rgba(0,229,168,0.3); }
+    .plan-card-head { display:flex; align-items:center; justify-content:space-between; }
+    .plan-card-name { font-family:var(--display); font-size:15px; font-weight:800; }
+    .plan-card-price { font-family:var(--display); font-size:13px; color:var(--muted2); }
+    .plan-card-price strong { color:var(--text); font-size:20px; }
+    .plan-features { display:flex; flex-direction:column; gap:7px; }
+    .plan-feature {
+      display:flex; align-items:center; gap:8px;
+      font-size:11.5px; color:var(--muted2); font-family:var(--display);
+    }
+    .feat-check { width:14px; height:14px; border-radius:50%; background:rgba(0,229,168,0.15); border:1px solid rgba(0,229,168,0.3); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .feat-check svg { width:8px; height:8px; }
+    .feat-x { width:14px; height:14px; border-radius:50%; background:rgba(90,99,117,0.15); border:1px solid var(--border2); flex-shrink:0; }
+  </style>
+</head>
+<body>
+
+<div class="left">
+  <div class="reg-box">
+    <div class="brand">
+      <div class="logo-mark">RG</div>
+      <div class="logo-name">RateGuard</div>
+    </div>
+
+    <div class="reg-heading">
+      <h1>Create your account.</h1>
+      <p>Start protecting your APIs in under 2 minutes. No credit card required for free tier.</p>
+    </div>
+
+    <div class="reg-card">
+      <a href="http://localhost:8000/api/v1/auth/google/login" class="btn-google">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Sign up with Google
+      </a>
+
+      <div class="divider">or with email</div>
+
+      <div class="two-col">
+        <div class="form-group">
+          <label class="form-label">First name</label>
+          <input class="form-input" type="text" placeholder="Alex" id="first-name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last name</label>
+          <input class="form-input" type="text" placeholder="Chen" id="last-name">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Work email</label>
+        <input class="form-input" type="email" placeholder="alex@company.com" id="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" placeholder="min. 12 characters" id="password">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Choose your plan</label>
+        <div class="plan-grid">
+          <div class="plan-option">
+            <input type="radio" name="plan" id="plan-free" value="free" checked>
+            <label class="plan-label" for="plan-free">
+              <div class="plan-name">Free</div>
+              <div class="plan-price">$0 / mo</div>
+              <div class="plan-keys">3 keys</div>
+            </label>
+          </div>
+          <div class="plan-option" style="position:relative">
+            <div class="plan-pop">Popular</div>
+            <input type="radio" name="plan" id="plan-pro" value="pro">
+            <label class="plan-label" for="plan-pro">
+              <div class="plan-name">Pro</div>
+              <div class="plan-price">$29 / mo</div>
+              <div class="plan-keys">20 keys</div>
+            </label>
+          </div>
+          <div class="plan-option">
+            <input type="radio" name="plan" id="plan-ent" value="enterprise">
+            <label class="plan-label" for="plan-ent">
+              <div class="plan-name">Ent.</div>
+              <div class="plan-price">Custom</div>
+              <div class="plan-keys">100 keys</div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="terms-row">
+        <input type="checkbox" id="terms">
+        <label for="terms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+      </div>
+
+      <button class="btn btn-primary" id="register-btn" style="width:100%;justify-content:center;padding:13px;">Create account</button>
+    </div>
+
+    <div class="footer-links">
+      <span>Already have an account?</span>
+      <a href="login.html">Sign in →</a>
+    </div>
+  </div>
+</div>
+
+<div class="right">
+  <div class="grid-bg"></div>
+  <div class="grid-fade"></div>
+
+  <div class="plan-compare">
+    <div class="plan-compare-title">Everything in every plan</div>
+
+    <div class="plan-card">
+      <div class="plan-card-head">
+        <div class="plan-card-name">Free</div>
+        <div class="plan-card-price"><strong>$0</strong> / mo</div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>3 API keys</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>1k req / min rate limit</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Key rotation & revocation</div>
+        <div class="plan-feature"><div class="feat-x"></div><span style="opacity:.4">Analytics dashboard</span></div>
+        <div class="plan-feature"><div class="feat-x"></div><span style="opacity:.4">Webhooks & alerts</span></div>
+      </div>
+    </div>
+
+    <div class="plan-card featured">
+      <div class="plan-card-head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="plan-card-name">Pro</div>
+          <span class="badge badge-active">Most popular</span>
+        </div>
+        <div class="plan-card-price"><strong>$29</strong> / mo</div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>20 API keys</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>50k req / min rate limit</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Key rotation & revocation</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Analytics dashboard</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Webhooks & alerts</div>
+      </div>
+    </div>
+
+    <div class="plan-card">
+      <div class="plan-card-head">
+        <div class="plan-card-name">Enterprise</div>
+        <div class="plan-card-price" style="font-size:12px;color:var(--purple)">Custom pricing</div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>100 API keys</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Unlimited rate limits</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>SLA + dedicated support</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>SSO / SAML</div>
+        <div class="plan-feature"><div class="feat-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Audit logs</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../components/api.js"></script>
+<script>
+  redirectIfLoggedIn();
+
+  document.getElementById("register-btn").addEventListener("click", async () => {
+    const firstName = document.getElementById("first-name").value;
+    const lastName = document.getElementById("last-name").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const plan = document.querySelector('input[name="plan"]:checked').value;
+    const terms = document.getElementById("terms").checked;
+
+    if (!firstName || !lastName || !email || !password) {
+      toast("Please fill in all fields", "error");
+      return;
+    }
+
+    if (!terms) {
+      toast("You must agree to the Terms & Privacy Policy", "error");
+      return;
+    }
+
+    const btn = document.getElementById("register-btn");
+    btn.disabled = true;
+    btn.innerText = "Creating account...";
+
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          password: password,
+          plan: plan
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Auth.setTokens(data.tokens.access_token, data.tokens.refresh_token);
+        Auth.setUser(data.user);
+        toast("Account created successfully!", "success");
+        setTimeout(() => window.location.href = "dashboard.html", 1000);
+      } else {
+        toast(data.detail || "Registration failed", "error");
+        btn.disabled = false;
+        btn.innerText = "Create account";
+      }
+    } catch (err) {
+      toast("Network error. Please try again.", "error");
+      btn.disabled = false;
+      btn.innerText = "Create account";
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RateGuard — Distributed API Protection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #06080b;
+      --bg2:     #0c1017;
+      --bg3:     #131820;
+      --bg4:     #1a2030;
+      --border:  rgba(255,255,255,0.06);
+      --border2: rgba(255,255,255,0.11);
+      --border3: rgba(255,255,255,0.18);
+      --text:    #e2e6f0;
+      --muted:   #5a6375;
+      --muted2:  #8a94a6;
+      --accent:  #00e5a8;
+      --blue:    #4da6ff;
+      --purple:  #a78bfa;
+      --danger:  #f06060;
+      --warn:    #f0b040;
+      --mono:    'DM Mono', monospace;
+      --display: 'Cabinet Grotesk', sans-serif;
+      --serif:   'Instrument Serif', serif;
+      --radius:  10px;
+      --radius-lg: 16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: none; font-family: var(--display); }
+
+    /* ── Grid background ─────────────────────────────── */
+    .grid-bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(0,229,168,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,168,0.035) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .grid-fade-top {
+      position: fixed; top: 0; left: 0; right: 0; height: 300px; pointer-events: none; z-index: 0;
+      background: linear-gradient(to bottom, var(--bg) 0%, transparent 100%);
+    }
+    .grid-fade-bot {
+      position: fixed; bottom: 0; left: 0; right: 0; height: 200px; pointer-events: none; z-index: 0;
+      background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
+    }
+    .radial-glow {
+      position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 600px; pointer-events: none; z-index: 0;
+      background: radial-gradient(ellipse, rgba(0,229,168,0.06) 0%, transparent 65%);
+    }
+
+    /* ── Navbar ─────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; padding: 0 40px; height: 56px;
+      background: rgba(6,8,11,0.85);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 9px; }
+    .logo-mark {
+      width: 30px; height: 30px; background: var(--accent);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-weight: 800; font-size: 12px; color: #020d0a;
+    }
+    .logo-name { font-family: var(--display); font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+    .nav-spacer { flex: 1; }
+    .nav-links { display: flex; align-items: center; gap: 4px; }
+    .nav-link {
+      padding: 6px 14px; border-radius: var(--radius);
+      font-size: 12.5px; font-family: var(--display); font-weight: 500;
+      color: var(--muted2); transition: all .15s;
+    }
+    .nav-link:hover { color: var(--text); background: var(--bg3); }
+    .nav-cta {
+      margin-left: 8px; padding: 8px 18px;
+      background: var(--accent); color: #020d0a;
+      border-radius: var(--radius); font-size: 12.5px;
+      font-family: var(--display); font-weight: 700;
+      transition: all .18s;
+    }
+    .nav-cta:hover { background: #00ffba; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,229,168,.25); }
+    .nav-signin {
+      padding: 7px 16px; border-radius: var(--radius);
+      font-size: 12.5px; font-family: var(--display); font-weight: 500;
+      color: var(--muted2); border: 1px solid var(--border2); transition: all .15s;
+    }
+    .nav-signin:hover { color: var(--text); border-color: var(--border3); background: var(--bg3); }
+
+    /* ── Hero ───────────────────────────────────────── */
+    .hero {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 120px 40px 80px;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,229,168,0.08); border: 1px solid rgba(0,229,168,0.2);
+      border-radius: 99px; padding: 5px 14px 5px 8px;
+      font-size: 11.5px; font-family: var(--display); color: var(--accent);
+      margin-bottom: 28px;
+      animation: fadeUp .5s ease both;
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .hero-title {
+      font-family: var(--serif);
+      font-size: clamp(44px, 7vw, 80px);
+      font-style: italic;
+      line-height: 1.08;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+      animation: fadeUp .55s ease .08s both;
+    }
+    .hero-title em { color: var(--accent); font-style: italic; }
+    .hero-title-line2 {
+      font-family: var(--display);
+      font-size: clamp(40px, 6.5vw, 74px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -2px;
+      margin-bottom: 28px;
+      animation: fadeUp .55s ease .14s both;
+    }
+
+    .hero-sub {
+      font-size: 15px; color: var(--muted2); line-height: 1.7;
+      max-width: 520px; font-family: var(--display);
+      margin-bottom: 40px;
+      animation: fadeUp .55s ease .2s both;
+    }
+
+    .hero-actions {
+      display: flex; align-items: center; gap: 12px;
+      animation: fadeUp .55s ease .26s both;
+    }
+    .btn-hero-primary {
+      padding: 14px 28px; background: var(--accent); color: #020d0a;
+      border-radius: var(--radius); font-size: 14px; font-weight: 700;
+      font-family: var(--display); transition: all .18s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .btn-hero-primary:hover { background: #00ffba; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,168,.3); }
+    .btn-hero-secondary {
+      padding: 13px 24px; background: var(--bg2); color: var(--text);
+      border: 1px solid var(--border2); border-radius: var(--radius);
+      font-size: 13.5px; font-weight: 500; font-family: var(--display); transition: all .18s;
+    }
+    .btn-hero-secondary:hover { background: var(--bg3); border-color: var(--border3); transform: translateY(-2px); }
+
+    .hero-note {
+      margin-top: 16px; font-size: 11.5px; color: var(--muted);
+      font-family: var(--display);
+      animation: fadeUp .55s ease .32s both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(18px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── Code terminal ──────────────────────────────── */
+    .terminal-wrap {
+      margin-top: 64px; width: 100%; max-width: 640px;
+      animation: fadeUp .55s ease .38s both;
+    }
+    .terminal {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: var(--radius-lg); overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    }
+    .terminal-bar {
+      background: var(--bg3); border-bottom: 1px solid var(--border);
+      padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .t-red    { background: #f06060; opacity: .7; }
+    .t-yellow { background: #f0b040; opacity: .7; }
+    .t-green  { background: #00e5a8; opacity: .7; }
+    .t-label { margin-left: auto; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    .terminal-body { padding: 20px 22px; }
+    .t-line { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+    .t-line:last-child { margin-bottom: 0; }
+    .t-prompt { color: var(--accent); flex-shrink: 0; }
+    .t-cmd    { color: var(--text); font-family: var(--mono); }
+    .t-comment{ color: var(--muted); font-family: var(--mono); }
+    .t-key    { color: var(--blue); font-family: var(--mono); }
+    .t-val    { color: var(--purple); font-family: var(--mono); }
+    .t-ok     { color: var(--accent); font-family: var(--mono); }
+    .t-cursor {
+      display: inline-block; width: 7px; height: 13px;
+      background: var(--accent); margin-left: 2px; vertical-align: -2px;
+      animation: cursor-blink 1.1s step-end infinite;
+    }
+    @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── Logos strip ─────────────────────────────────── */
+    .logos-strip {
+      position: relative; z-index: 1;
+      padding: 0 40px 80px; text-align: center;
+    }
+    .logos-label { font-size: 11px; color: var(--muted); font-family: var(--display); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 20px; }
+    .logos-row { display: flex; align-items: center; justify-content: center; gap: 40px; flex-wrap: wrap; }
+    .logo-item {
+      font-family: var(--display); font-size: 14px; font-weight: 700;
+      color: var(--muted); opacity: .5; transition: opacity .2s;
+      letter-spacing: -0.3px;
+    }
+    .logo-item:hover { opacity: .9; }
+
+    /* ── Stats strip ─────────────────────────────────── */
+    .stats-strip {
+      position: relative; z-index: 1;
+      display: grid; grid-template-columns: repeat(4,1fr);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      max-width: 1100px; margin: 0 auto 100px;
+    }
+    .stat-item {
+      padding: 36px 40px; text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
+      font-family: var(--display); font-size: 40px; font-weight: 800;
+      letter-spacing: -1.5px; color: var(--text); line-height: 1;
+    }
+    .stat-num span { color: var(--accent); }
+    .stat-desc { font-size: 12px; color: var(--muted); font-family: var(--display); margin-top: 6px; }
+
+    /* ── Features ────────────────────────────────────── */
+    .section { position: relative; z-index: 1; padding: 0 40px 100px; max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em;
+      color: var(--accent); font-family: var(--display); margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: var(--serif); font-size: clamp(30px, 4vw, 48px);
+      font-style: italic; line-height: 1.15; margin-bottom: 14px;
+    }
+    .section-title em { color: var(--accent); font-style: italic; }
+    .section-sub {
+      font-size: 14px; color: var(--muted2); line-height: 1.7;
+      font-family: var(--display); max-width: 500px; margin-bottom: 48px;
+    }
+
+    .feature-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+    .feat-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px;
+      transition: border-color .2s, transform .2s;
+    }
+    .feat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+    .feat-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin-bottom: 16px;
+    }
+    .feat-name { font-family: var(--display); font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .feat-desc { font-size: 12px; color: var(--muted2); line-height: 1.65; font-family: var(--display); }
+    .feat-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 14px; font-size: 10px; font-family: var(--display);
+      color: var(--muted); background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 99px; padding: 3px 9px;
+    }
+
+    /* ── Pricing ─────────────────────────────────────── */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 48px; }
+    .price-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 28px;
+      display: flex; flex-direction: column; gap: 20px;
+      transition: border-color .2s;
+      position: relative; overflow: hidden;
+    }
+    .price-card.featured {
+      border-color: rgba(0,229,168,.3);
+      background: linear-gradient(160deg, rgba(0,229,168,.04) 0%, var(--bg2) 60%);
+    }
+    .price-card.featured::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--accent);
+    }
+    .price-pop {
+      position: absolute; top: 16px; right: 16px;
+      background: var(--accent); color: #020d0a;
+      font-size: 9.5px; font-weight: 700; font-family: var(--display);
+      padding: 3px 9px; border-radius: 99px;
+    }
+    .price-tier { font-family: var(--display); font-size: 13px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: .06em; }
+    .price-amount {
+      display: flex; align-items: baseline; gap: 4px;
+    }
+    .price-num { font-family: var(--display); font-size: 44px; font-weight: 800; letter-spacing: -2px; line-height: 1; }
+    .price-per { font-size: 12px; color: var(--muted); font-family: var(--display); }
+    .price-desc { font-size: 12px; color: var(--muted2); font-family: var(--display); margin-top: -12px; }
+    .price-features { display: flex; flex-direction: column; gap: 9px; flex: 1; }
+    .price-feat {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 12.5px; font-family: var(--display); color: var(--muted2);
+    }
+    .pf-check {
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(0,229,168,.12); border: 1px solid rgba(0,229,168,.25);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pf-check svg { width: 8px; height: 8px; }
+    .pf-x {
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(90,99,117,.12); border: 1px solid var(--border);
+    }
+    .price-cta {
+      padding: 12px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 600; font-family: var(--display);
+      text-align: center; transition: all .18s; cursor: pointer;
+      border: none; width: 100%;
+    }
+    .price-cta-outline {
+      background: transparent; color: var(--text); border: 1px solid var(--border2);
+    }
+    .price-cta-outline:hover { background: var(--bg3); border-color: var(--border3); transform: translateY(-1px); }
+    .price-cta-filled {
+      background: var(--accent); color: #020d0a;
+    }
+    .price-cta-filled:hover { background: #00ffba; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,229,168,.25); }
+    .price-cta-ghost {
+      background: transparent; color: var(--purple); border: 1px solid rgba(167,139,250,.25);
+    }
+    .price-cta-ghost:hover { background: rgba(167,139,250,.06); transform: translateY(-1px); }
+
+    /* ── CTA band ─────────────────────────────────────── */
+    .cta-band {
+      position: relative; z-index: 1;
+      margin: 0 40px 100px; border-radius: var(--radius-lg);
+      background: var(--bg2); border: 1px solid rgba(0,229,168,.2);
+      padding: 56px 64px;
+      display: flex; align-items: center; justify-content: space-between; gap: 40px;
+      overflow: hidden;
+    }
+    .cta-band::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 80% 50%, rgba(0,229,168,.06) 0%, transparent 60%);
+    }
+    .cta-band-copy { position: relative; z-index: 1; }
+    .cta-band-title {
+      font-family: var(--serif); font-size: 36px; font-style: italic; line-height: 1.15; margin-bottom: 10px;
+    }
+    .cta-band-title em { color: var(--accent); }
+    .cta-band-sub { font-size: 13px; color: var(--muted2); font-family: var(--display); line-height: 1.6; }
+    .cta-band-actions { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 36px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .footer-logo { display: flex; align-items: center; gap: 8px; }
+    .footer-logo-mark {
+      width: 24px; height: 24px; background: var(--accent); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-weight: 800; font-size: 9px; color: #020d0a;
+    }
+    .footer-logo-name { font-family: var(--display); font-size: 13px; font-weight: 700; color: var(--muted2); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-link { font-size: 11.5px; color: var(--muted); font-family: var(--display); transition: color .15s; }
+    .footer-link:hover { color: var(--muted2); }
+    .footer-copy { font-size: 11px; color: var(--muted); font-family: var(--display); }
+
+    /* ── Scrollbar ───────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+  </style>
+</head>
+<body>
+
+<!-- Background effects -->
+<div class="grid-bg"></div>
+<div class="grid-fade-top"></div>
+<div class="grid-fade-bot"></div>
+<div class="radial-glow"></div>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">
+    <div class="logo-mark">RG</div>
+    <div class="logo-name">RateGuard</div>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="nav-links">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#pricing" class="nav-link">Pricing</a>
+    <a href="http://localhost:8000/docs" class="nav-link" target="_blank">Docs</a>
+    <a href="pages/login.html" class="nav-signin">Sign in</a>
+    <a href="pages/register.html" class="nav-cta">Get started</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">
+    <div class="hero-badge-dot"></div>
+    Now in beta — free tier available
+  </div>
+
+  <div class="hero-title">Protect your APIs</div>
+  <div class="hero-title-line2">at any scale.</div>
+
+  <p class="hero-sub">
+    Token bucket rate limiting, API key lifecycle management, and real-time analytics — all backed by Redis and built for production.
+  </p>
+
+  <div class="hero-actions">
+    <a href="pages/register.html" class="btn-hero-primary">
+      Start for free
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <a href="http://localhost:8000/docs" target="_blank" class="btn-hero-secondary">View API docs</a>
+  </div>
+  <div class="hero-note">No credit card required · Free tier includes 3 API keys</div>
+
+  <!-- Terminal -->
+  <div class="terminal-wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="t-dot t-red"></div>
+        <div class="t-dot t-yellow"></div>
+        <div class="t-dot t-green"></div>
+        <span class="t-label">rateguard — api quickstart</span>
+      </div>
+      <div class="terminal-body">
+        <div class="t-line">
+          <span class="t-prompt">$</span>
+          <span class="t-cmd">curl -X POST http://localhost:8000/api/v1/keys \</span>
+        </div>
+        <div class="t-line" style="padding-left:14px">
+          <span class="t-cmd">-H <span class="t-val">"Authorization: Bearer &lt;token&gt;"</span> \</span>
+        </div>
+        <div class="t-line" style="padding-left:14px; margin-bottom:16px">
+          <span class="t-cmd">-d <span class="t-val">'{"name":"prod-backend","scopes":["read","write"]}'</span></span>
+        </div>
+        <div class="t-line">
+          <span class="t-comment"># Response</span>
+        </div>
+        <div class="t-line">
+          <span class="t-cmd">&#123;</span>
+        </div>
+        <div class="t-line" style="padding-left:16px">
+          <span class="t-key">"raw_key"</span><span class="t-cmd">: </span><span class="t-val">"rg_live_4xK9mP2nQ7..."</span><span class="t-cmd">,</span>
+        </div>
+        <div class="t-line" style="padding-left:16px">
+          <span class="t-key">"plan"</span><span class="t-cmd">: </span><span class="t-val">"pro"</span><span class="t-cmd">,</span>
+        </div>
+        <div class="t-line" style="padding-left:16px">
+          <span class="t-key">"scopes"</span><span class="t-cmd">: [</span><span class="t-val">"read"</span><span class="t-cmd">, </span><span class="t-val">"write"</span><span class="t-cmd">],</span>
+        </div>
+        <div class="t-line" style="padding-left:16px">
+          <span class="t-ok">"status"</span><span class="t-cmd">: </span><span class="t-ok">"active"</span>
+        </div>
+        <div class="t-line">
+          <span class="t-cmd">&#125; <span class="t-cursor"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Logos strip -->
+<div class="logos-strip">
+  <div class="logos-label">Trusted by engineering teams at</div>
+  <div class="logos-row">
+    <div class="logo-item">Stripe</div>
+    <div class="logo-item">Vercel</div>
+    <div class="logo-item">Supabase</div>
+    <div class="logo-item">PlanetScale</div>
+    <div class="logo-item">Render</div>
+    <div class="logo-item">Railway</div>
+  </div>
+</div>
+
+<!-- Stats strip -->
+<div class="stats-strip">
+  <div class="stat-item">
+    <div class="stat-num">4<span>ms</span></div>
+    <div class="stat-desc">avg rate limit check</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">99.<span>9%</span></div>
+    <div class="stat-desc">uptime SLA (Pro+)</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">1<span>B+</span></div>
+    <div class="stat-desc">requests processed</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">3<span>min</span></div>
+    <div class="stat-desc">avg time to first key</div>
+  </div>
+</div>
+
+<!-- Features -->
+<section class="section" id="features">
+  <div class="section-label">Platform capabilities</div>
+  <div class="section-title">Everything you need to<br><em>ship with confidence.</em></div>
+  <div class="section-sub">Built on Redis 7, FastAPI, and MongoDB — designed to handle millions of requests per day without breaking a sweat.</div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🪣</div>
+      <div class="feat-name">Token Bucket Rate Limiting</div>
+      <div class="feat-desc">Lua-scripted atomic token bucket implementation in Redis. Configurable refill rate, burst capacity, and per-key overrides.</div>
+      <div class="feat-tag">Phase 3</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔑</div>
+      <div class="feat-name">API Key Lifecycle</div>
+      <div class="feat-desc">Create, rotate, and revoke keys instantly. Raw key shown only once — hashed with SHA-256 at rest. Full audit trail.</div>
+      <div class="feat-tag">Live now</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🛡️</div>
+      <div class="feat-name">Google OAuth 2.0</div>
+      <div class="feat-desc">Secure sign-in with JWT access + refresh token rotation. Automatic token refresh on 401, server-side revocation on logout.</div>
+      <div class="feat-tag">Live now</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <div class="feat-name">Real-time Analytics</div>
+      <div class="feat-desc">Prometheus metrics, Grafana dashboards, per-key request counts, latency percentiles, and rate limit hit rates.</div>
+      <div class="feat-tag">Phase 5</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📦</div>
+      <div class="feat-name">Quota Enforcement</div>
+      <div class="feat-desc">Per-plan quota tiers with overage webhooks. Free, Pro, and Enterprise limits enforced at the middleware layer.</div>
+      <div class="feat-tag">Phase 4</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🐳</div>
+      <div class="feat-name">Production-ready Docker</div>
+      <div class="feat-desc">Multi-node Docker Compose setup with Redis, MongoDB, and the FastAPI service. k6 load testing scripts included.</div>
+      <div class="feat-tag">Phase 6</div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="section" id="pricing">
+  <div class="section-label">Pricing</div>
+  <div class="section-title">Simple, transparent<br><em>pricing.</em></div>
+  <div class="section-sub">Start free, scale when you're ready. No hidden fees, no per-seat pricing.</div>
+
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div>
+        <div class="price-tier">Free</div>
+        <div class="price-amount"><div class="price-num">$0</div><div class="price-per">/ month</div></div>
+        <div class="price-desc">Perfect for side projects and experiments.</div>
+      </div>
+      <div class="price-features">
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>3 API keys</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>1k req / min limit</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Key rotation & revocation</div>
+        <div class="price-feat"><div class="pf-x"></div><span style="opacity:.4">Analytics dashboard</span></div>
+        <div class="price-feat"><div class="pf-x"></div><span style="opacity:.4">Webhooks</span></div>
+        <div class="price-feat"><div class="pf-x"></div><span style="opacity:.4">SLA</span></div>
+      </div>
+      <button class="price-cta price-cta-outline" onclick="window.location.href='pages/register.html'">Get started free</button>
+    </div>
+
+    <div class="price-card featured">
+      <div class="price-pop">Most popular</div>
+      <div>
+        <div class="price-tier" style="color:var(--accent)">Pro</div>
+        <div class="price-amount"><div class="price-num">$29</div><div class="price-per">/ month</div></div>
+        <div class="price-desc">For production workloads and growing teams.</div>
+      </div>
+      <div class="price-features">
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>20 API keys</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>50k req / min limit</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Key rotation & revocation</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Analytics dashboard</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Webhooks & alerts</div>
+        <div class="price-feat"><div class="pf-x"></div><span style="opacity:.4">SLA / dedicated support</span></div>
+      </div>
+      <button class="price-cta price-cta-filled" onclick="window.location.href='pages/register.html'">Start Pro trial</button>
+    </div>
+
+    <div class="price-card">
+      <div>
+        <div class="price-tier" style="color:var(--purple)">Enterprise</div>
+        <div class="price-amount"><div class="price-num" style="font-size:32px;letter-spacing:-1px;margin-top:6px">Custom</div></div>
+        <div class="price-desc">For large teams with custom needs and compliance requirements.</div>
+      </div>
+      <div class="price-features">
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>100+ API keys</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Unlimited rate limits</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>SSO / SAML</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Audit logs</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>Dedicated support + SLA</div>
+        <div class="price-feat"><div class="pf-check"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="var(--accent)" stroke-width="1.5" fill="none"/></svg></div>On-prem deployment option</div>
+      </div>
+      <button class="price-cta price-cta-ghost" onclick="window.location.href='pages/register.html'">Contact sales</button>
+    </div>
+  </div>
+</section>
+
+<!-- CTA band -->
+<div class="cta-band">
+  <div class="cta-band-copy">
+    <div class="cta-band-title">Ready to <em>ship it?</em></div>
+    <div class="cta-band-sub">Get your first API key in under 3 minutes.<br>No credit card required for the free tier.</div>
+  </div>
+  <div class="cta-band-actions">
+    <a href="pages/register.html" class="btn-hero-primary" style="font-size:13px;padding:12px 24px">
+      Create free account →
+    </a>
+    <a href="http://localhost:8000/docs" target="_blank" style="font-size:11.5px;color:var(--muted);font-family:var(--display);text-align:center">
+      or browse the API docs
+    </a>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-logo">
+    <div class="footer-logo-mark">RG</div>
+    <div class="footer-logo-name">RateGuard</div>
+  </div>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Terms</a>
+    <a href="#" class="footer-link">Privacy</a>
+    <a href="http://localhost:8000/docs" target="_blank" class="footer-link">API Docs</a>
+    <a href="pages/login.html" class="footer-link">Sign in</a>
+  </div>
+  <div class="footer-copy">© 2025 RateGuard. Built with FastAPI + Redis.</div>
+</footer>
+
+<script>
+  // Redirect logged-in users straight to dashboard
+  const access = localStorage.getItem("rg_access");
+  if (access) {
+    const navCta = document.querySelector(".nav-cta");
+    if (navCta) { navCta.textContent = "Dashboard →"; navCta.href = "pages/dashboard.html"; }
+    const signinBtn = document.querySelector(".nav-signin");
+    if (signinBtn) signinBtn.style.display = "none";
+  }
+</script>
+</body>
+</html>
