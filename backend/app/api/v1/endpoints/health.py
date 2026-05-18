@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.db.mongo import get_client
-from app.db.redis import get_redis
+from app.db.redis_client import get_redis
 
 router = APIRouter(prefix="/health", tags=["health"])
 

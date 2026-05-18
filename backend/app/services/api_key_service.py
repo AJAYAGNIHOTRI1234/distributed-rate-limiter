@@ -49,6 +49,10 @@ async def revoke_api_key(user: User, key_id: str) -> None:
     api_key.is_active = False
     await api_key.save()
 
+    # Evict API Key metadata from Redis cache to disable it immediately
+    from app.services.rate_limiter import evict_key_cache
+    await evict_key_cache(api_key.key_prefix)
+
 
 async def rotate_api_key(user: User, key_id: str) -> APIKeyCreated:
     api_key = await APIKey.get(key_id)
@@ -56,6 +60,10 @@ async def rotate_api_key(user: User, key_id: str) -> APIKeyCreated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found.")
     api_key.is_active = False
     await api_key.save()
+
+    # Evict rotated API Key metadata from Redis cache
+    from app.services.rate_limiter import evict_key_cache
+    await evict_key_cache(api_key.key_prefix)
 
     raw_key, prefix = APIKey.generate_raw_key()
     key_hash = hash_api_key(raw_key)

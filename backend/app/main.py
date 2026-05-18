@@ -3,10 +3,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import auth, health, keys
+from app.api.v1.endpoints import auth, health, keys, limiter
 from app.core.config import settings
 from app.db.mongo import connect_db as init_db
-from app.db.redis import close_redis, init_redis
+from app.db.redis_client import close_redis, init_redis
 
 
 @asynccontextmanager
@@ -47,6 +47,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(keys.router, prefix="/api/v1", tags=["api-keys"])
+app.include_router(limiter.router, prefix="/api/v1", tags=["limiter"])
 
 
 @app.get("/")

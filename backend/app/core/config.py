@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Rate Limiting
+    RATE_LIMIT_FREE: int = 60
+    RATE_LIMIT_PRO: int = 600
+    RATE_LIMIT_ENTERPRISE: int = 6000
+    RATE_LIMIT_WINDOW: int = 60  # seconds
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,

@@ -4,7 +4,7 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.db.mongo import connect_db, close_db
-from app.db.redis import init_redis, close_redis
+from app.db.redis_client import init_redis, close_redis
 from app.core.config import settings
 
 # Set env vars BEFORE any imports that might use them (though app is already imported)

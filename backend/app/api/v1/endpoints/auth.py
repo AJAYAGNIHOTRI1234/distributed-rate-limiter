@@ -3,7 +3,7 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 
-from app.db.redis import get_redis
+from app.db.redis_client import get_redis
 from app.middleware.deps import get_current_user
 from app.models.user import User
 from app.schemas.auth import GoogleCallbackResponse, LoginRequest, RefreshRequest, RegisterRequest, TokenPair, UserOut
