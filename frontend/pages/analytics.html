@@ -3,99 +3,167 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RateGuard — Analytics</title>
+  <title>RateGuard — Analytics & Telemetry</title>
   <link rel="stylesheet" href="../assets/css/main.css">
+  <!-- Load Chart.js natively via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/api.js"></script>
   <style>
     .shell {
-      display:grid;
-      grid-template-columns:220px 1fr;
-      grid-template-rows:52px 1fr;
-      min-height:100vh;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      grid-template-rows: 52px 1fr;
+      min-height: 100vh;
     }
 
-    /* Topbar */
+    /* Topbar & Sidebar layout matches dashboard.html */
     .topbar {
-      grid-column:1 / -1;
-      background:var(--bg2);
-      border-bottom:1px solid var(--border);
-      display:flex; align-items:center; padding:0 20px; gap:14px;
+      grid-column: 1 / -1;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 20px; gap: 14px;
+      z-index: 10;
     }
-    .logo { display:flex; align-items:center; gap:9px; cursor:pointer; }
+    .logo { display: flex; align-items: center; gap: 9px; }
     .logo-mark {
-      width:28px; height:28px; background:var(--accent);
-      border-radius:7px; display:flex; align-items:center; justify-content:center;
-      font-family:var(--display); font-weight:800; font-size:11px; color:#020d0a;
+      width: 28px; height: 28px; background: var(--accent);
+      border-radius: 7px; display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-weight: 800; font-size: 11px; color: #020d0a;
     }
-    .logo-name { font-family:var(--display); font-size:15px; font-weight:800; letter-spacing:-0.3px; }
-    .topbar-spacer { flex:1; }
+    .logo-name { font-family: var(--display); font-size: 15px; font-weight: 800; letter-spacing: -0.3px; }
+    .topbar-spacer { flex: 1; }
 
     .user-pill {
-      display:flex; align-items:center; gap:8px;
-      background:var(--bg3); border:1px solid var(--border2);
-      border-radius:99px; padding:4px 14px 4px 4px;
-      font-size:12px; font-family:var(--display);
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 99px; padding: 4px 14px 4px 4px;
+      font-size: 12px; font-family: var(--display); cursor: pointer;
+      transition: border-color .15s;
     }
+    .user-pill:hover { border-color: var(--border3); }
     .user-avatar {
-      width:26px; height:26px; border-radius:50%;
-      background:var(--accent); color:#020d0a;
-      display:flex; align-items:center; justify-content:center;
-      font-weight:800; font-size:10px; font-family:var(--display);
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent); color: #020d0a;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 10px; font-family: var(--display);
+      flex-shrink: 0;
     }
+    .btn-logout {
+      background: none; border: none; color: var(--muted);
+      font-size: 11px; cursor: pointer; padding: 4px 8px;
+      border-radius: 5px; font-family: var(--display);
+      transition: color .15s;
+    }
+    .btn-logout:hover { color: var(--danger); }
 
-    /* Sidebar */
     .sidebar {
-      background:var(--bg2); border-right:1px solid var(--border);
-      padding:20px 0; display:flex; flex-direction:column; gap:4px;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      padding: 20px 0; display: flex; flex-direction: column; gap: 4px;
     }
-    .nav-section { padding:0 12px; margin-bottom:4px; }
+    .nav-section { padding: 0 12px; margin-bottom: 4px; }
     .nav-label {
-      font-size:9px; font-weight:600; text-transform:uppercase;
-      letter-spacing:.1em; color:var(--muted); padding:8px 8px 4px;
-      font-family:var(--display);
+      font-size: 9px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--muted); padding: 8px 8px 4px;
+      font-family: var(--display);
     }
     .nav-item {
-      display:flex; align-items:center; gap:9px;
-      padding:8px 10px; border-radius:8px;
-      font-size:12px; font-family:var(--display); font-weight:500;
-      color:var(--muted2); cursor:pointer; transition:all .15s;
-      user-select:none;
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: 8px;
+      font-size: 12px; font-family: var(--display); font-weight: 500;
+      color: var(--muted2); cursor: pointer; transition: all .15s;
+      user-select: none;
     }
-    .nav-item:hover { background:var(--bg3); color:var(--text); }
-    .nav-item.active { background:rgba(0,229,168,.08); color:var(--accent); }
-    .nav-icon { width:16px; height:16px; opacity:.7; }
-    .nav-item.active .nav-icon { opacity:1; }
-
-    /* Main content */
-    .main { padding:40px; overflow-y:auto; display:flex; flex-direction:column; gap:32px; width:100%; }
-
-    .page-header { display:flex; align-items:flex-start; justify-content:space-between; }
-    .page-title { font-family:var(--display); font-size:24px; font-weight:800; letter-spacing:-0.5px; }
-    .page-sub { font-size:13px; color:var(--muted2); margin-top:4px; font-family:var(--display); }
-
-    .chart-card {
-      background:var(--bg2); border:1px solid var(--border);
-      border-radius:var(--radius-lg); padding:24px;
-      display:flex; flex-direction:column; gap:20px;
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    .nav-item.active { background: rgba(0, 229, 168, 0.08); color: var(--accent); }
+    .nav-icon { width: 16px; height: 16px; opacity: .7; }
+    .nav-item.active .nav-icon { opacity: 1; }
+    .nav-badge {
+      margin-left: auto; font-size: 9px; padding: 2px 6px;
+      background: var(--bg4); border-radius: 99px; color: var(--muted);
+      font-family: var(--mono);
     }
-    .chart-header { display:flex; align-items:center; justify-content:space-between; }
-    .chart-title { font-family:var(--display); font-size:14px; font-weight:700; }
+    .sidebar-divider { height: 1px; background: var(--border); margin: 8px 12px; }
+
+    /* Main Dashboard content styles */
+    .main { padding: 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-family: var(--display); font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
+    .page-sub { font-size: 12px; color: var(--muted2); margin-top: 3px; font-family: var(--display); }
+
+    /* Spark Telemetry Cards */
+    .telemetry-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .telemetry-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 18px 20px;
+      position: relative; overflow: hidden; transition: border-color .2s;
+    }
+    .telemetry-card:hover { border-color: var(--border3); }
+    .telemetry-accent {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--card-clr, var(--accent)); opacity: 0.8;
+    }
+    .telemetry-label { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: .05em; font-family: var(--display); }
+    .telemetry-value { font-size: 24px; font-weight: 800; margin-top: 6px; font-family: var(--mono); color: var(--text); }
+    .telemetry-note { font-size: 11px; color: var(--muted2); margin-top: 5px; font-family: var(--display); }
+
+    /* Glass Cards containing charts */
+    .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    .card {
+      background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-lg);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); padding: 20px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .card-header { display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-family: var(--display); font-size: 14px; font-weight: 700; color: var(--text); }
     
-    .chart-placeholder {
-      height:240px; background:var(--bg3); border:1px dashed var(--border2);
-      border-radius:var(--radius); display:flex; align-items:center; justify-content:center;
-      position:relative; overflow:hidden;
-    }
-    .chart-placeholder::after {
-      content:''; position:absolute; inset:0;
-      background:linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-      animation:shimmer 2s infinite;
-    }
-    @keyframes shimmer { 0% { transform:translateX(-100%); } 100% { transform:translateX(100%); } }
+    .chart-container { position: relative; width: 100%; height: 260px; }
 
-    .empty-state { text-align:center; position:relative; z-index:1; }
-    .empty-icon { font-size:32px; margin-bottom:12px; }
-    .empty-title { font-family:var(--display); font-size:14px; font-weight:700; margin-bottom:4px; }
-    .empty-desc { font-size:12px; color:var(--muted); max-width:260px; margin:0 auto; font-family:var(--display); }
+    /* Custom Switch CSS for Real-time Toggle */
+    .switch {
+      position: relative; display: inline-block;
+      width: 38px; height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--bg4); border: 1px solid var(--border2);
+      transition: .3s;
+    }
+    .slider:before {
+      position: absolute; content: "";
+      height: 12px; width: 12px;
+      left: 3px; bottom: 3px;
+      background-color: var(--muted); transition: .3s;
+    }
+    input:checked + .slider {
+      background-color: rgba(0, 229, 168, 0.15); border-color: var(--accent);
+    }
+    input:checked + .slider:before {
+      transform: translateX(18px); background-color: var(--accent);
+    }
+    .slider.round { border-radius: 34px; }
+    .slider.round:before { border-radius: 50%; }
+
+    /* Table styles for active API Keys */
+    .keys-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .keys-table th {
+      padding: 10px 12px; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border);
+      font-family: var(--display); letter-spacing: .05em;
+    }
+    .keys-table td {
+      padding: 12px; font-size: 12px; border-bottom: 1px solid var(--border);
+      color: var(--text); font-family: var(--display);
+    }
+    .key-badge {
+      font-family: var(--mono); background: var(--bg3); border: 1px solid var(--border2);
+      padding: 2px 7px; border-radius: 5px; font-size: 10.5px; color: var(--text);
+    }
+    .metric-badge {
+      font-family: var(--mono); font-weight: 700; color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -103,18 +171,21 @@
 
   <!-- Topbar -->
   <div class="topbar">
-    <div class="logo" onclick="window.location.href='dashboard.html'">
+    <div class="logo">
       <div class="logo-mark">RG</div>
       <div class="logo-name">RateGuard</div>
     </div>
     <div class="topbar-spacer"></div>
-    <button class="btn-icon" id="theme-toggle" title="Toggle Light/Dark Mode" style="background:var(--bg3);border:1px solid var(--border2);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--text);cursor:pointer;outline:none">
-      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+    <button class="btn-icon" id="theme-toggle" title="Toggle Light/Dark Mode" style="background:var(--bg3);border:1px solid var(--border2);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--text);cursor:pointer;outline:none;margin-right:8px">
+      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
     </button>
-    <div class="user-pill" style="cursor: pointer" onclick="handleLogout()">
-      <div class="user-avatar" id="nav-initials">?</div>
-      <span id="nav-name" style="font-size:12.5px">Loading…</span>
+    <div class="user-pill" id="user-pill" onclick="window.location.href='profile.html'">
+      <div class="user-avatar" id="user-initials">?</div>
+      <span id="user-name">Loading…</span>
     </div>
+    <button class="btn-logout" id="logout-btn" onclick="handleLogout()">Sign out</button>
   </div>
 
   <!-- Sidebar -->
@@ -132,8 +203,10 @@
           <polyline points="2,12 5,8 8,10 11,5 14,7"/><rect x="2" y="2" width="12" height="12" rx="2"/>
         </svg>
         Analytics
+        <span class="nav-badge">Phase 5</span>
       </div>
     </div>
+    <div class="sidebar-divider"></div>
     <div class="nav-section">
       <div class="nav-label">Account</div>
       <div class="nav-item" onclick="window.location.href='profile.html'">
@@ -161,77 +234,337 @@
   <div class="main">
     <div class="page-header">
       <div>
-        <h1 class="page-title">Analytics</h1>
-        <p class="page-sub">Monitor your API traffic, rate limit hits, and latency in real-time.</p>
+        <div class="page-title">Analytics & Telemetry</div>
+        <div class="page-sub">Native platform trends, response volumes, and transaction latency</div>
       </div>
-      <span class="badge badge-pro">Phase 5 Milestone</span>
+      <!-- Real-time Polling Controls -->
+      <div style="display:flex; align-items:center; gap:10px; background:var(--bg2); border:1px solid var(--border); padding:6px 14px; border-radius:99px">
+        <span style="font-size:11.5px; color:var(--muted); font-family:var(--display); font-weight:500">Live Auto-refresh</span>
+        <label class="switch">
+          <input type="checkbox" id="live-feed-toggle" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-header"><div class="chart-title">Request Throughput</div></div>
-      <div class="chart-placeholder">
-        <div class="empty-state">
-          <div class="empty-icon">📊</div>
-          <div class="empty-title">Analytics Coming Soon</div>
-          <div class="empty-desc">We'll implement real-time Prometheus metrics and Grafana dashboards in Phase 5.</div>
+    <!-- Telemetry Cards Grid -->
+    <div class="telemetry-grid">
+      <div class="telemetry-card" style="--card-clr:var(--blue)">
+        <div class="telemetry-accent"></div>
+        <div class="telemetry-label">Requests Today</div>
+        <div class="telemetry-value" id="spark-requests">0</div>
+        <div class="telemetry-note">Total server calls today</div>
+      </div>
+      <div class="telemetry-card" style="--card-clr:var(--accent)">
+        <div class="telemetry-accent"></div>
+        <div class="telemetry-label">Success Rate</div>
+        <div class="telemetry-value" id="spark-success">0.0%</div>
+        <div class="telemetry-note">Percentage of 200 OKs</div>
+      </div>
+      <div class="telemetry-card" style="--card-clr:#a78bfa">
+        <div class="telemetry-accent"></div>
+        <div class="telemetry-label">Active Credentials</div>
+        <div class="telemetry-value" id="spark-keys">0</div>
+        <div class="telemetry-note">Keys generating traffic today</div>
+      </div>
+      <div class="telemetry-card" style="--card-clr:var(--warn)">
+        <div class="telemetry-accent"></div>
+        <div class="telemetry-label">p90 Latency</div>
+        <div class="telemetry-value" id="spark-latency">0.0 ms</div>
+        <div class="telemetry-note">Speed profile benchmark</div>
+      </div>
+    </div>
+
+    <!-- Charts Container Grid -->
+    <div class="charts-grid">
+      <!-- Traffic Trends (Line Chart) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Traffic Rate (Last 24 Hours)</div>
+          <span style="font-size:10px; color:var(--muted); font-family:var(--display)">Requests / Hour</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="trafficChart"></canvas>
+        </div>
+      </div>
+
+      <!-- HTTP Status Distribution (Doughnut Chart) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">HTTP Responses</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="statusChart"></canvas>
         </div>
       </div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-header"><div class="chart-title">Rate Limit Hit Rate</div></div>
-      <div class="chart-placeholder">
-        <div class="empty-state">
-          <div class="empty-icon">🛡️</div>
-          <div class="empty-title">Protection Stats</div>
-          <div class="empty-desc">Track exactly how many requests were blocked by your RateGuard engine.</div>
+    <!-- Bottom Row (Bar Chart & Keys table) -->
+    <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
+      <!-- Latency percentiles (Bar Chart) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Transaction Latency Benchmarks</div>
+          <span style="font-size:10px; color:var(--muted); font-family:var(--display)">Value in Milliseconds</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="latencyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Top active keys table -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top Active Client Credentials</div>
+          <span style="font-size:10px; color:var(--muted); font-family:var(--display)">Traffic Share Today</span>
+        </div>
+        <div style="overflow-x: auto; width:100%">
+          <table class="keys-table">
+            <thead>
+              <tr>
+                <th>Key Prefix</th>
+                <th style="text-align: right">Total Calls</th>
+              </tr>
+            </thead>
+            <tbody id="top-keys-body">
+              <tr>
+                <td colspan="2" style="text-align:center;color:var(--muted);padding:24px">No active key traffic logged today</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
-<div id="toast-container"></div>
-<script src="../components/api.js"></script>
 <script>
+  // Verify user identity using standard route guards
   requireAuth();
-  function applyUser(user) {
-    const initials = user.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-    document.getElementById("nav-name").textContent = user.name;
-    document.getElementById("nav-initials").textContent = initials;
+
+  let refreshInterval = null;
+
+  // Setup Global Chart.js styling variables to fit our premium dark mode
+  Chart.defaults.color = '#94a3b8'; // var(--muted)
+  Chart.defaults.font.family = 'system-ui, -apple-system, sans-serif';
+
+  // Instantiate Chart.js variables
+  let trafficChart = null;
+  let statusChart = null;
+  let latencyChart = null;
+
+  // Initialize all Charts on page load
+  function initCharts() {
+    // 1. Hourly Traffic Line Chart
+    const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
+    
+    // Create neon linear gradient for line curve
+    const gradient = ctxTraffic.createLinearGradient(0, 0, 0, 240);
+    gradient.addColorStop(0, 'rgba(0, 229, 168, 0.12)');
+    gradient.addColorStop(1, 'rgba(0, 229, 168, 0.00)');
+
+    trafficChart = new Chart(ctxTraffic, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`),
+        datasets: [{
+          label: 'Requests',
+          data: Array(24).fill(0),
+          borderColor: '#00e5a8', // var(--accent)
+          borderWidth: 2,
+          pointBackgroundColor: '#00e5a8',
+          pointHoverRadius: 6,
+          tension: 0.4, // Smooth curve
+          fill: true,
+          backgroundColor: gradient
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(255, 255, 255, 0.03)' } },
+          y: { 
+            grid: { color: 'rgba(255, 255, 255, 0.03)' },
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        }
+      }
+    });
+
+    // 2. HTTP Responses Doughnut Chart
+    const ctxStatus = document.getElementById('statusChart').getContext('2d');
+    statusChart = new Chart(ctxStatus, {
+      type: 'doughnut',
+      data: {
+        labels: ['Success (200)', 'Rate Limit (429)', 'Quota Block (403)'],
+        datasets: [{
+          data: [0, 0, 0],
+          backgroundColor: ['#00e5a8', '#f59e0b', '#ef4444'], // green, orange, red
+          borderWidth: 2,
+          borderColor: '#0f172a'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, padding: 15 }
+          }
+        },
+        cutout: '72%'
+      }
+    });
+
+    // 3. Latency Profile Bar Chart
+    const ctxLatency = document.getElementById('latencyChart').getContext('2d');
+    latencyChart = new Chart(ctxLatency, {
+      type: 'bar',
+      data: {
+        labels: ['p50 (Median)', 'p90 (High)', 'p99 (Peak)'],
+        datasets: [{
+          data: [0, 0, 0],
+          backgroundColor: ['rgba(0, 229, 168, 0.7)', 'rgba(59, 130, 246, 0.7)', 'rgba(167, 139, 250, 0.7)'],
+          borderColor: ['#00e5a8', '#3b82f6', '#a78bfa'],
+          borderWidth: 1.5,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            grid: { color: 'rgba(255, 255, 255, 0.03)' },
+            beginAtZero: true,
+            ticks: { callback: value => `${value} ms` }
+          }
+        }
+      }
+    });
   }
-  // Theme handling
-  const themeToggle = document.getElementById("theme-toggle");
-  const themeIcon = document.getElementById("theme-icon");
-  
-  function applyTheme(theme) {
-    if (theme === "light") {
-      document.documentElement.classList.add("light-mode");
-      themeIcon.innerHTML = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
-    } else {
-      document.documentElement.classList.remove("light-mode");
-      themeIcon.innerHTML = `<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>`;
+
+  // Fetch real-time telemetry metrics
+  async function fetchSummary() {
+    try {
+      const resp = await apiFetch("/analytics/summary");
+      if (!resp || !resp.ok) throw new Error("Failed to fetch analytics");
+
+      const data = await resp.json();
+
+      // 1. Update Spark telemetry values
+      const totalRequests = data.hourly_requests.reduce((a, b) => a + b, 0);
+      document.getElementById('spark-requests').innerText = totalRequests.toLocaleString();
+
+      const successCount = data.status_breakdown["200"] || 0;
+      const rateLimitCount = data.status_breakdown["429"] || 0;
+      const quotaCount = data.status_breakdown["403"] || 0;
+      const totalStatus = successCount + rateLimitCount + quotaCount;
+      
+      const successRate = totalStatus > 0 ? ((successCount / totalStatus) * 100).toFixed(1) : "100.0";
+      document.getElementById('spark-success').innerText = `${successRate}%`;
+
+      document.getElementById('spark-keys').innerText = data.top_keys.length;
+      document.getElementById('spark-latency').innerText = `${data.latency_metrics.p90.toFixed(1)} ms`;
+
+      // 2. Update Traffic Line Chart
+      trafficChart.data.datasets[0].data = data.hourly_requests;
+      trafficChart.update();
+
+      // 3. Update Status Doughnut Chart
+      statusChart.data.datasets[0].data = [successCount, rateLimitCount, quotaCount];
+      statusChart.update();
+
+      // 4. Update Latency Bar Chart
+      latencyChart.data.datasets[0].data = [
+        data.latency_metrics.p50,
+        data.latency_metrics.p90,
+        data.latency_metrics.p99
+      ];
+      latencyChart.update();
+
+      // 5. Update Top active keys table list
+      const tbody = document.getElementById('top-keys-body');
+      if (data.top_keys.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:24px">No active key traffic logged today</td></tr>`;
+      } else {
+        tbody.innerHTML = data.top_keys.map(k => `
+          <tr>
+            <td><span class="key-badge">${k.prefix}…</span></td>
+            <td style="text-align: right"><span class="metric-badge">${k.requests.toLocaleString()}</span> hits</td>
+          </tr>
+        `).join('');
+      }
+
+    } catch (e) {
+      console.error("Telemetry Refresh Fail:", e);
     }
   }
 
-  themeToggle.addEventListener("click", () => {
-    const isLight = document.documentElement.classList.contains("light-mode");
-    const newTheme = isLight ? "dark" : "light";
-    localStorage.setItem("rg-theme", newTheme);
-    applyTheme(newTheme);
-  });
+  // Load profile identity variables
+  async function loadProfile() {
+    try {
+      const cached = Auth.getUser();
+      if (cached) applyUser(cached);
 
-  const savedTheme = localStorage.getItem("rg-theme") || "dark";
-  applyTheme(savedTheme);
+      const resp = await apiFetch("/auth/me");
+      if (resp && resp.ok) {
+        const u = await resp.json();
+        Auth.setUser(u);
+        applyUser(u);
+      }
+    } catch (e) {
+      console.error("Profile load failed:", e);
+    }
+  }
 
+  function applyUser(user) {
+    document.getElementById('user-name').innerText = user.name;
+    // Generate Initials
+    const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    document.getElementById('user-initials').innerText = initials;
+  }
+
+  // Manage Real-time refresh loop
+  function manageRefresh() {
+    const isLive = document.getElementById('live-feed-toggle').checked;
+    if (isLive) {
+      if (!refreshInterval) {
+        refreshInterval = setInterval(fetchSummary, 3000);
+      }
+    } else {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+    }
+  }
+
+  // Handle Logout
   async function handleLogout() {
     if (!confirm("Are you sure you want to sign out?")) return;
     const refresh = Auth.getRefresh();
-    if (refresh) await apiFetch("/auth/logout",{method:"POST",body:JSON.stringify({refresh_token:refresh})});
+    if (refresh) await apiFetch("/auth/logout", { method: "POST", body: JSON.stringify({ refresh_token: refresh }) });
     Auth.clear();
     window.location.href = "login.html";
   }
-  const u = Auth.getUser(); if(u) applyUser(u);
+
+  // Initialize components on startup
+  window.addEventListener('DOMContentLoaded', async () => {
+    initCharts();
+    await loadProfile();
+    await fetchSummary();
+    manageRefresh();
+
+    document.getElementById('live-feed-toggle').addEventListener('change', manageRefresh);
+  });
 </script>
 </body>
 </html>

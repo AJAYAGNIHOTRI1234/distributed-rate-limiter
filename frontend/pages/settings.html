@@ -207,14 +207,80 @@
             <button class="btn btn-secondary btn-sm">Enable</button>
           </div>
           <div class="setting-row">
-            <div class="setting-info">
-              <div class="setting-label">Session Management</div>
-              <div class="setting-desc">Logout from all other devices.</div>
-            </div>
-            <button class="btn btn-danger btn-sm">Logout Others</button>
           </div>
         </div>
       </div>
+
+      <!-- Webhooks & Alerts -->
+      <div class="settings-card" id="webhooks-card">
+        <div class="settings-head">
+          <div class="settings-title">Webhooks & Alerts</div>
+          <label class="switch" title="Enable Webhooks">
+            <input type="checkbox" id="wh-active-input">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-body">
+          <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:8px">
+            <div class="setting-info" style="margin-bottom:6px">
+              <div class="setting-label">Webhook Target URL</div>
+              <div class="setting-desc">RateGuard will send signed JSON payloads to this endpoint when events occur.</div>
+            </div>
+            <div style="display:flex; gap:10px">
+              <input type="url" class="form-input" id="wh-url-input" placeholder="e.g. https://my-app.com/api/webhooks" style="flex:1; background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius); padding:6px 12px; font-size:12px; color:var(--text); outline:none">
+              <button class="btn btn-secondary" id="wh-test-btn" style="padding:0 16px; font-size:11.5px; height:32px; align-self:center; cursor:pointer">Test URL</button>
+            </div>
+          </div>
+
+          <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:8px; border-top:1px solid var(--border); padding-top:16px">
+            <div class="setting-info" style="margin-bottom:6px">
+              <div class="setting-label">Signing Secret</div>
+              <div class="setting-desc">Verify that incoming webhooks are authentic by checking the HMAC signature in headers.</div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center">
+              <div class="form-input" id="wh-secret-display" style="flex:1; font-family:var(--mono); font-size:11.5px; color:var(--muted); background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; height:32px; padding:0 12px">
+                <span id="wh-secret-text">whsec_••••••••••••••••••••••••••••</span>
+                <span id="wh-secret-toggle" style="cursor:pointer; color:var(--accent); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em">Reveal</span>
+              </div>
+              <button class="btn btn-secondary" id="wh-copy-btn" style="padding:0 16px; font-size:11.5px; height:32px; cursor:pointer">Copy</button>
+            </div>
+          </div>
+
+          <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:8px; border-top:1px solid var(--border); padding-top:16px">
+            <div class="setting-info" style="margin-bottom:4px">
+              <div class="setting-label">Subscribed Events</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px; margin-top:4px">
+              <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer">
+                <input type="checkbox" id="evt-approaching" value="quota.approaching" checked style="margin-top:2px; accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:12px; font-weight:600; font-family:var(--display)">quota.approaching</div>
+                  <div style="font-size:10px; color:var(--muted); font-family:var(--display)">Fired once daily when request counts reach 80% of daily quota limits.</div>
+                </div>
+              </label>
+              <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer">
+                <input type="checkbox" id="evt-exceeded" value="quota.exceeded" checked style="margin-top:2px; accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:12px; font-weight:600; font-family:var(--display)">quota.exceeded</div>
+                  <div style="font-size:10px; color:var(--muted); font-family:var(--display)">Fired once daily when request counts hit 100% of daily quota limits.</div>
+                </div>
+              </label>
+              <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer">
+                <input type="checkbox" id="evt-limit-exceeded" value="rate_limit.exceeded" checked style="margin-top:2px; accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:12px; font-weight:600; font-family:var(--display)">rate_limit.exceeded</div>
+                  <div style="font-size:10px; color:var(--muted); font-family:var(--display)">Fired with a 5-minute cooldown when window rate limits are exceeded.</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--border); padding-top:16px; display:flex">
+            <button class="btn btn-primary" id="wh-save-btn" style="cursor:pointer">Save Webhooks Configuration</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -252,6 +318,103 @@
   const savedTheme = localStorage.getItem("rg-theme") || "dark";
   applyTheme(savedTheme);
 
+  // Webhooks Configuration Logic
+  let currentWebhookSecret = "";
+  let isSecretRevealed = false;
+
+  async function loadWebhookConfig() {
+    const resp = await apiFetch("/webhooks");
+    if (!resp || !resp.ok) return;
+    const data = await resp.json();
+    
+    document.getElementById("wh-active-input").checked = data.is_active;
+    document.getElementById("wh-url-input").value = data.url || "";
+    currentWebhookSecret = data.secret || "";
+    
+    // Set checkboxes
+    document.getElementById("evt-approaching").checked = data.events.includes("quota.approaching");
+    document.getElementById("evt-exceeded").checked = data.events.includes("quota.exceeded");
+    document.getElementById("evt-limit-exceeded").checked = data.events.includes("rate_limit.exceeded");
+    
+    maskSecret();
+  }
+
+  function maskSecret() {
+    document.getElementById("wh-secret-text").textContent = "whsec_••••••••••••••••••••••••••••";
+    document.getElementById("wh-secret-toggle").textContent = "Reveal";
+    isSecretRevealed = false;
+  }
+
+  function revealSecret() {
+    document.getElementById("wh-secret-text").textContent = currentWebhookSecret;
+    document.getElementById("wh-secret-toggle").textContent = "Hide";
+    isSecretRevealed = true;
+  }
+
+  document.getElementById("wh-secret-toggle").addEventListener("click", () => {
+    if (isSecretRevealed) {
+      maskSecret();
+    } else {
+      revealSecret();
+    }
+  });
+
+  document.getElementById("wh-copy-btn").addEventListener("click", () => {
+    if (!currentWebhookSecret) return;
+    navigator.clipboard.writeText(currentWebhookSecret)
+      .then(() => toast("Webhook secret copied to clipboard", "success"))
+      .catch(() => toast("Failed to copy secret", "error"));
+  });
+
+  document.getElementById("wh-save-btn").addEventListener("click", async () => {
+    const url = document.getElementById("wh-url-input").value.trim();
+    const is_active = document.getElementById("wh-active-input").checked;
+    
+    const events = [];
+    if (document.getElementById("evt-approaching").checked) events.push("quota.approaching");
+    if (document.getElementById("evt-exceeded").checked) events.push("quota.exceeded");
+    if (document.getElementById("evt-limit-exceeded").checked) events.push("rate_limit.exceeded");
+
+    const resp = await apiFetch("/webhooks", {
+      method: "PUT",
+      body: JSON.stringify({ url: url || null, is_active, events })
+    });
+
+    if (resp && resp.ok) {
+      toast("Webhook configuration saved successfully", "success");
+      loadWebhookConfig();
+    } else {
+      const err = resp ? await resp.json() : {};
+      toast(err.detail || "Failed to save webhook configuration", "error");
+    }
+  });
+
+  document.getElementById("wh-test-btn").addEventListener("click", async () => {
+    const url = document.getElementById("wh-url-input").value.trim();
+    if (!url) {
+      toast("Please enter a target URL to test", "error");
+      return;
+    }
+
+    toast("Dispatching test ping event...", "info");
+    const resp = await apiFetch("/webhooks/test", {
+      method: "POST",
+      body: JSON.stringify({ url, secret: currentWebhookSecret })
+    });
+
+    if (resp && resp.ok) {
+      const data = await resp.json();
+      if (data.status_code >= 200 && data.status_code < 300) {
+        toast(`Test Webhook Successful! Server returned HTTP ${data.status_code}`, "success");
+      } else {
+        toast(`Test Webhook Received! Server returned HTTP ${data.status_code}`, "error");
+      }
+    } else {
+      const err = resp ? await resp.json() : {};
+      toast(err.detail || "Failed to contact test URL", "error");
+    }
+  });
+
   async function handleLogout() {
     if (!confirm("Are you sure you want to sign out?")) return;
     const refresh = Auth.getRefresh();
@@ -260,6 +423,7 @@
     window.location.href = "login.html";
   }
   const u = Auth.getUser(); if(u) applyUser(u);
+  loadWebhookConfig();
 </script>
 </body>
 </html>

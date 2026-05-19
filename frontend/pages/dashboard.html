@@ -329,12 +329,21 @@
           <div class="empty-desc">Create your first API key to start protecting your services.</div>
         </div>
       </div>
-      <div class="usage-wrap" id="usage-wrap" style="display:none">
-        <div class="usage-label">
-          <span>Key usage</span>
-          <span id="usage-text">0 / 0</span>
+      <div class="usage-wrap" id="usage-wrap" style="display:none; display:flex; flex-direction:column; gap:12px">
+        <div>
+          <div class="usage-label">
+            <span>Key limits (Active / Allowed)</span>
+            <span id="usage-text">0 / 0</span>
+          </div>
+          <div class="usage-bar"><div class="usage-fill" id="usage-fill" style="width:0%"></div></div>
         </div>
-        <div class="usage-bar"><div class="usage-fill" id="usage-fill" style="width:0%"></div></div>
+        <div>
+          <div class="usage-label">
+            <span>Daily Quota usage (Today / Limit)</span>
+            <span id="quota-usage-text">0 / 0</span>
+          </div>
+          <div class="usage-bar"><div class="usage-fill" id="quota-usage-fill" style="width:0%; background:var(--blue); box-shadow:0 0 8px rgba(0, 150, 255, 0.2)"></div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -390,6 +399,8 @@
     if (resp && resp.ok) { const u = await resp.json(); Auth.setUser(u); applyUser(u); }
   }
 
+  const QUOTA_LIMITS = { free: 1000, pro: 50000, enterprise: 500000 };
+
   function applyUser(user) {
     document.getElementById("user-name").textContent = user.name;
     const initials = user.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
@@ -397,8 +408,9 @@
     const plan = user.plan.charAt(0).toUpperCase() + user.plan.slice(1);
     document.getElementById("stat-plan").textContent = plan;
     const limit = PLAN_LIMITS[user.plan] || 3;
+    const quota = QUOTA_LIMITS[user.plan] || 1000;
     document.getElementById("stat-plan-limit").textContent = `of ${limit} allowed`;
-    document.getElementById("stat-plan-note").textContent = `${limit} keys max`;
+    document.getElementById("stat-plan-note").textContent = `${limit} keys · ${quota.toLocaleString()} req/day`;
   }
 
   async function loadKeys() {
@@ -421,9 +433,18 @@
     if (user) {
       const limit = PLAN_LIMITS[user.plan] || 3;
       const pct = Math.round((active.length / limit) * 100);
-      document.getElementById("usage-wrap").style.display = "block";
+      
+      // Daily quota metrics calculation
+      const todayReq = keys.reduce((s,k)=>s+(k.requests_today || 0),0);
+      const quotaLimit = QUOTA_LIMITS[user.plan] || 1000;
+      const quotaPct = Math.min(100, Math.round((todayReq / quotaLimit) * 100));
+
+      document.getElementById("usage-wrap").style.display = "flex";
       document.getElementById("usage-text").textContent = `${active.length} / ${limit}`;
       document.getElementById("usage-fill").style.width = pct + "%";
+      
+      document.getElementById("quota-usage-text").textContent = `${todayReq.toLocaleString()} / ${quotaLimit.toLocaleString()}`;
+      document.getElementById("quota-usage-fill").style.width = quotaPct + "%";
     }
 
     if (!keys.length) {
@@ -444,7 +465,7 @@
           <div class="key-preview">${esc(k.key_preview)}</div>
           <div class="key-meta">
             ${k.scopes.join(", ")} &nbsp;·&nbsp;
-            ${k.request_count.toLocaleString()} req &nbsp;·&nbsp;
+            <strong>${(k.requests_today || 0).toLocaleString()}</strong> / ${(k.request_count || 0).toLocaleString()} req today &nbsp;·&nbsp;
             ${new Date(k.created_at).toLocaleDateString()}
           </div>
         </div>
