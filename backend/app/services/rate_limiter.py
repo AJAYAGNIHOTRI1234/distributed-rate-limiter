@@ -77,6 +77,7 @@ async def get_key_metadata(plain_key: str) -> dict | None:
     # Prepare cached metadata
     data = {
         "id": str(key_doc.id),
+        "user_id": str(key_doc.user_id),
         "key_hash": key_doc.key_hash,
         "plan": str(key_doc.plan),
         "is_active": key_doc.is_active,
@@ -133,3 +134,145 @@ async def check_rate_limit(plain_key: str, plan_tier: str) -> tuple[bool, int, i
         print(f"[Redis] Rate limiter Lua script execution error: {e}")
         # Fallback to fail-open
         return True, limit, limit
+
+
+async def trigger_webhook_with_dedup(
+    user_id: str, event: str, prefix: str, today: str, payload_data: dict
+) -> None:
+    redis = get_redis()
+    if not redis:
+        return
+    flag_key = f"rateguard:webhook_flag:{prefix}:{event}:{today}"
+    already_set = await redis.get(flag_key)
+    if not already_set:
+        await redis.setex(flag_key, 36 * 3600, "1")
+        from app.services.webhook import WebhookService
+        import asyncio
+        asyncio.create_task(WebhookService.trigger_webhook(user_id, event, payload_data))
+
+
+async def trigger_webhook_with_cooldown(
+    user_id: str, event: str, prefix: str, cooldown_seconds: int, payload_data: dict
+) -> None:
+    redis = get_redis()
+    if not redis:
+        return
+    flag_key = f"rateguard:webhook_flag:{prefix}:{event}:cooldown"
+    already_set = await redis.get(flag_key)
+    if not already_set:
+        await redis.setex(flag_key, cooldown_seconds, "1")
+        from app.services.webhook import WebhookService
+        import asyncio
+        asyncio.create_task(WebhookService.trigger_webhook(user_id, event, payload_data))
+
+
+async def check_quota_and_limit(
+    plain_key: str, plan_tier: str, user_id: str
+) -> tuple[bool, str, int, int, int, int]:
+    """
+    Checks the daily quota usage and sliding-window rate limit using Redis.
+    Returns:
+        (allowed: bool, reject_reason: str, remaining_window: int, window_limit: int, current_daily: int, daily_limit: int)
+    """
+    prefix = plain_key[:16]
+    daily_limit = getattr(settings, f"QUOTA_LIMIT_{plan_tier.upper()}", settings.QUOTA_LIMIT_FREE)
+    window_limit = getattr(settings, f"RATE_LIMIT_{plan_tier.upper()}", settings.RATE_LIMIT_FREE)
+    window = settings.RATE_LIMIT_WINDOW
+
+    redis = get_redis()
+    if not redis:
+        # Fallback to fail-open if Redis is down
+        return True, "", window_limit, window_limit, 0, daily_limit
+
+    # 1. Check Daily Quota
+    from datetime import UTC, datetime
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    quota_key = f"rateguard:quota:{prefix}:{today}"
+
+    current_val = await redis.get(quota_key)
+    current_daily = int(current_val) if current_val else 0
+
+    if current_daily >= daily_limit:
+        # Trigger quota.exceeded webhook (deduplicated)
+        await trigger_webhook_with_dedup(
+            user_id,
+            "quota.exceeded",
+            prefix,
+            today,
+            {
+                "key_prefix": prefix,
+                "plan": plan_tier,
+                "requests_today": current_daily,
+                "quota_limit": daily_limit,
+                "percentage": 100.0,
+            }
+        )
+        return False, "quota_exceeded", 0, window_limit, current_daily, daily_limit
+
+    # 2. Check Sliding Window Rate Limit
+    rate_key = f"rateguard:rate_limit:{prefix}"
+    now = time.time()
+    member = f"{now}_{uuid.uuid4()}"
+
+    try:
+        res = await redis.eval(LUA_SLIDING_WINDOW, 1, rate_key, now, window, window_limit, member)
+        allowed = bool(res[0])
+        remaining = int(res[1])
+    except Exception as e:
+        print(f"[Redis] Rate limiter Lua script execution error: {e}")
+        # Fallback to fail-open
+        return True, "", window_limit, window_limit, current_daily, daily_limit
+
+    if not allowed:
+        # Trigger rate_limit.exceeded webhook with a 5-minute cooldown to prevent spamming
+        await trigger_webhook_with_cooldown(
+            user_id,
+            "rate_limit.exceeded",
+            prefix,
+            300,
+            {
+                "key_prefix": prefix,
+                "plan": plan_tier,
+                "window_size_seconds": window,
+                "rate_limit": window_limit,
+            }
+        )
+        return False, "rate_limit_exceeded", remaining, window_limit, current_daily, daily_limit
+
+    # 3. Successful request: Increment Daily Quota atomically
+    new_daily = await redis.incr(quota_key)
+    if new_daily == 1:
+        await redis.expire(quota_key, 36 * 3600)  # 36 hours TTL
+
+    # 4. Check warning and limit thresholds for Webhooks
+    pct = new_daily / daily_limit
+    if pct >= 1.0:
+        await trigger_webhook_with_dedup(
+            user_id,
+            "quota.exceeded",
+            prefix,
+            today,
+            {
+                "key_prefix": prefix,
+                "plan": plan_tier,
+                "requests_today": new_daily,
+                "quota_limit": daily_limit,
+                "percentage": 100.0,
+            }
+        )
+    elif pct >= 0.8:
+        await trigger_webhook_with_dedup(
+            user_id,
+            "quota.approaching",
+            prefix,
+            today,
+            {
+                "key_prefix": prefix,
+                "plan": plan_tier,
+                "requests_today": new_daily,
+                "quota_limit": daily_limit,
+                "percentage": round(pct * 100, 1),
+            }
+        )
+
+    return True, "", remaining, window_limit, new_daily, daily_limit

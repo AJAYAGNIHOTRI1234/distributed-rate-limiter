@@ -17,6 +17,7 @@ def _to_api_key_out(api_key: APIKey) -> APIKeyOut:
         created_at=api_key.created_at.isoformat(),
         last_used=api_key.last_used.isoformat() if api_key.last_used else None,
         request_count=api_key.requests_total,
+        requests_today=api_key.requests_today,
     )
 
 

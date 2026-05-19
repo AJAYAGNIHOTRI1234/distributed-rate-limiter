@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENTERPRISE: int = 6000
     RATE_LIMIT_WINDOW: int = 60  # seconds
 
+    # Daily Quotas
+    QUOTA_LIMIT_FREE: int = 1000
+    QUOTA_LIMIT_PRO: int = 50000
+    QUOTA_LIMIT_ENTERPRISE: int = 500000
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,

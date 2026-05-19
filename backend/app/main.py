@@ -3,10 +3,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import auth, health, keys, limiter
+from app.api.v1.endpoints import auth, health, keys, limiter, webhooks, analytics
 from app.core.config import settings
 from app.db.mongo import connect_db as init_db
 from app.db.redis_client import close_redis, init_redis
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from fastapi import Response
+
 
 
 @asynccontextmanager
@@ -48,8 +51,15 @@ app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(keys.router, prefix="/api/v1", tags=["api-keys"])
 app.include_router(limiter.router, prefix="/api/v1", tags=["limiter"])
+app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
+app.include_router(analytics.router, prefix="/api/v1", tags=["analytics"])
 
 
 @app.get("/")
 async def root():
     return {"service": "RateGuard", "status": "running", "version": "1.0.0"}
+
+
+@app.get("/metrics")
+def prometheus_metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.models.api_key import APIKey
 from app.models.token import RefreshToken
 from app.models.user import User
+from app.models.webhook import WebhookSetting
 
 _client: AsyncIOMotorClient | None = None
 
@@ -14,7 +15,7 @@ async def connect_db() -> None:
     _client = AsyncIOMotorClient(settings.MONGO_URL)
     await init_beanie(
         database=_client[settings.MONGO_DB],
-        document_models=[User, APIKey, RefreshToken],
+        document_models=[User, APIKey, RefreshToken, WebhookSetting],
     )
     print(f"[DB] Connected to MongoDB: {settings.MONGO_DB}")
 

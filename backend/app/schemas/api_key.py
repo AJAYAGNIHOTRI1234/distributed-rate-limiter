@@ -17,6 +17,7 @@ class APIKeyOut(BaseModel):
     created_at: str
     last_used: str | None
     request_count: int
+    requests_today: int
 
 
 class APIKeyCreated(APIKeyOut):

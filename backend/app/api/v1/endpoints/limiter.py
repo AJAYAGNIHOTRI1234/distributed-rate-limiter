@@ -1,8 +1,11 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, time
+import time as perf_time
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, Response, status
 from app.core.config import settings
 from app.models.api_key import APIKey
-from app.services.rate_limiter import check_rate_limit, get_key_metadata
+from app.services.rate_limiter import check_quota_and_limit, get_key_metadata
+from app.services.analytics_service import TelemetryService
+from app.core.prometheus import requests_counter, latency_histogram
 
 router = APIRouter(prefix="/limiter", tags=["limiter"])
 
@@ -30,6 +33,7 @@ async def check_rate_limiting(
     authorization: str | None = Header(None),
     api_key_query: str | None = Query(None, alias="api_key"),
 ):
+    start_time = perf_time.perf_counter()
     """
     Enforce rate limits on incoming API requests based on plan tiers.
     Accepts keys via:
@@ -60,31 +64,73 @@ async def check_rate_limiting(
             detail="Invalid or inactive API key.",
         )
 
-    # 3. Perform atomic rate limiting check
-    allowed, remaining, limit = await check_rate_limit(plain_key, metadata["plan"])
+    # 3. Perform atomic rate limiting and daily quota check
+    allowed, reject_reason, remaining, limit, current_daily, daily_limit = await check_quota_and_limit(
+        plain_key, metadata["plan"], metadata["user_id"]
+    )
+
+    # Calculate seconds until midnight UTC for X-Quota-Reset
+    now = datetime.now(UTC)
+    tomorrow = datetime.combine(now.date() + timedelta(days=1), time.min, tzinfo=UTC)
+    seconds_to_midnight = int((tomorrow - now).total_seconds())
 
     # 4. Set standard response headers
     response.headers["X-RateLimit-Limit"] = str(limit)
     response.headers["X-RateLimit-Remaining"] = str(remaining)
     response.headers["X-RateLimit-Reset"] = str(settings.RATE_LIMIT_WINDOW)
+    
+    response.headers["X-Quota-Limit"] = str(daily_limit)
+    response.headers["X-Quota-Remaining"] = str(max(0, daily_limit - current_daily))
+    response.headers["X-Quota-Reset"] = str(seconds_to_midnight)
 
-    # 5. Handle rate limit exceeded
+    # Calculate request latency in milliseconds
+    latency_ms = (perf_time.perf_counter() - start_time) * 1000.0
+
+    # 5. Handle limit/quota exceeded
     if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded.",
-            headers={
-                "X-RateLimit-Limit": str(limit),
-                "X-RateLimit-Remaining": str(remaining),
-                "X-RateLimit-Reset": str(settings.RATE_LIMIT_WINDOW),
-            },
-        )
+        if reject_reason == "quota_exceeded":
+            requests_counter.labels(status="403", plan=metadata["plan"]).inc()
+            latency_histogram.observe(latency_ms / 1000.0)
+            background_tasks.add_task(TelemetryService.track_request, metadata["user_id"], plain_key[:16], 403, latency_ms)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Daily quota exceeded.",
+                headers={
+                    "X-RateLimit-Limit": str(limit),
+                    "X-RateLimit-Remaining": str(remaining),
+                    "X-RateLimit-Reset": str(settings.RATE_LIMIT_WINDOW),
+                    "X-Quota-Limit": str(daily_limit),
+                    "X-Quota-Remaining": str(max(0, daily_limit - current_daily)),
+                    "X-Quota-Reset": str(seconds_to_midnight),
+                },
+            )
+        else:
+            requests_counter.labels(status="429", plan=metadata["plan"]).inc()
+            latency_histogram.observe(latency_ms / 1000.0)
+            background_tasks.add_task(TelemetryService.track_request, metadata["user_id"], plain_key[:16], 429, latency_ms)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded.",
+                headers={
+                    "X-RateLimit-Limit": str(limit),
+                    "X-RateLimit-Remaining": str(remaining),
+                    "X-RateLimit-Reset": str(settings.RATE_LIMIT_WINDOW),
+                    "X-Quota-Limit": str(daily_limit),
+                    "X-Quota-Remaining": str(max(0, daily_limit - current_daily)),
+                    "X-Quota-Reset": str(seconds_to_midnight),
+                },
+            )
 
-    # 6. Schedule async statistics write-back
+    # 6. Schedule async statistics write-back and telemetry in MongoDB
+    requests_counter.labels(status="200", plan=metadata["plan"]).inc()
+    latency_histogram.observe(latency_ms / 1000.0)
     background_tasks.add_task(update_api_key_stats, metadata["id"])
+    background_tasks.add_task(TelemetryService.track_request, metadata["user_id"], plain_key[:16], 200, latency_ms)
 
     return {
         "allowed": True,
         "remaining": remaining,
         "limit": limit,
+        "quota_remaining": max(0, daily_limit - current_daily),
+        "quota_limit": daily_limit,
     }
