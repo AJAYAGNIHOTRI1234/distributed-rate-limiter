@@ -95,7 +95,8 @@ Open [http://localhost:5500](http://localhost:5500) to access the platform.
 - [x] **Phase 1**: Mono-repo, Native environment setup (Redis + Mongo), CI Pipeline.
 - [x] **Phase 2**: Identity & Lifecycle (JWT Auth, API Key CRUD).
 - [x] **Frontend Polish**: Fully navigable dashboard with Profile, Billing, Settings, and Day/Night mode.
-- [/] **Phase 3**: Core Engine (Redis Lua Rate Limiting) — *In Progress*.
-- [ ] **Phase 4**: Quota Enforcement & Webhooks.
-- [ ] **Phase 5**: Observability (Prometheus, Grafana, Dashboard).
+- [x] **Phase 3**: Core Engine (Redis Lua Sliding Window Rate Limiting).
+- [x] **Phase 4**: Quota Enforcement & Webhooks (Daily blocks & Stripe-compliant HMAC signed Webhooks).
+- [/] **Phase 5**: Observability & Real-Time Dashboard (Prometheus /metrics & in-console telemetry UI) — *In Progress*.
 - [ ] **Phase 6**: Production Hardening & Load Testing.
+
