@@ -111,6 +111,7 @@ rateguard/
 │   │
 │   └── tests/                         ← Pytest Suite & E2E Validation
 │       ├── conftest.py                ← Shared database & event loop fixtures
+│       ├── locustfile.py              ← Concurrent scaling & load testing scenarios
 │       ├── test_analytics.py          ← Prometheus /metrics & DB telemetry tests
 │       ├── test_auth.py               ← Auth endpoints & callback verification tests
 │       ├── test_auth_email.py         ← Credentials registration & login tests
@@ -269,4 +270,4 @@ cp .env.example .env
 - [x] **Phase 3**: Core Engine (Atomic sliding window rate limiting).
 - [x] **Phase 4**: Quota Enforcement & Stripe-compliant HMAC Webhooks.
 - [x] **Phase 5**: Observability Dashboard (Prometheus metrics & Telemetry dashboard UI).
-- [ ] **Phase 6**: Production Hardening & Load Testing.
+- [x] **Phase 6**: Production Hardening & Load Testing.

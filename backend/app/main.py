@@ -5,11 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints import auth, health, keys, limiter, webhooks, analytics
 from app.core.config import settings
-from app.db.mongo import connect_db as init_db
+from app.db.mongo import connect_db as init_db, close_db
 from app.db.redis_client import close_redis, init_redis
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Response
-
 
 
 @asynccontextmanager
@@ -19,6 +18,7 @@ async def lifespan(app: FastAPI):
     await init_redis()
     yield
     # Shutdown
+    await close_db()
     await close_redis()
 
 
@@ -46,6 +46,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000; "
+        "img-src 'self' data: https://img.shields.io;"
+    )
+    return response
 
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
