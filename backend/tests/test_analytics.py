@@ -1,10 +1,7 @@
 import pytest
 from httpx import AsyncClient
-from app.core.config import settings
 from app.models.user import User
-from app.models.api_key import APIKey
 from app.services.auth_service import issue_token_pair
-from app.db.redis_client import get_redis
 
 @pytest.mark.asyncio
 async def test_root_prometheus_metrics(client: AsyncClient):

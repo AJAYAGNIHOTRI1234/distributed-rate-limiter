@@ -1,8 +1,6 @@
-import time
 import math
 from datetime import UTC, datetime
 from app.db.redis_client import get_redis
-from app.core.config import settings
 
 class TelemetryService:
     @staticmethod

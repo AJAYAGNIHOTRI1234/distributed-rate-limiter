@@ -2,8 +2,6 @@ import pytest
 from httpx import AsyncClient
 from app.core.config import settings
 from app.models.user import User
-from app.models.api_key import APIKey
-from app.models.webhook import WebhookSetting
 from app.services.auth_service import issue_token_pair
 
 

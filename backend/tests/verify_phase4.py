@@ -1,8 +1,5 @@
 import asyncio
 import httpx
-import json
-import hmac
-import hashlib
 from datetime import UTC, datetime
 from app.core.config import settings
 from app.db.redis_client import get_redis
@@ -11,7 +8,6 @@ from app.models.webhook import WebhookSetting
 from app.models.api_key import APIKey
 from app.models.token import RefreshToken
 from app.services.auth_service import issue_token_pair
-from app.db.mongo import init_beanie
 from app.db.redis_client import init_redis, close_redis
 import motor.motor_asyncio
 from beanie import init_beanie as beanie_init
