@@ -1,6 +1,8 @@
+import asyncio
 import time
 import uuid
 import json
+from datetime import UTC, datetime
 from app.core.config import settings
 from app.core.security import verify_api_key
 from app.db.redis_client import get_redis
@@ -57,6 +59,14 @@ async def get_key_metadata(plain_key: str) -> dict | None:
             cached = await redis.get(cache_key)
             if cached:
                 data = json.loads(cached)
+                # Check key expiry from cached metadata
+                exp_str = data.get("expires_at")
+                if exp_str:
+                    exp = datetime.fromisoformat(exp_str)
+                    if exp.tzinfo is None:
+                        exp = exp.replace(tzinfo=UTC)
+                    if datetime.now(UTC) >= exp:
+                        return None
                 # Verify the plain key matches the hashed key
                 if verify_api_key(plain_key, data["key_hash"]):
                     return data
@@ -74,6 +84,14 @@ async def get_key_metadata(plain_key: str) -> dict | None:
     if not verify_api_key(plain_key, key_doc.key_hash):
         return None
 
+    # Reject expired keys
+    if key_doc.expires_at is not None:
+        exp = key_doc.expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=UTC)
+        if datetime.now(UTC) >= exp:
+            return None
+
     # Prepare cached metadata
     data = {
         "id": str(key_doc.id),
@@ -81,6 +99,7 @@ async def get_key_metadata(plain_key: str) -> dict | None:
         "key_hash": key_doc.key_hash,
         "plan": str(key_doc.plan),
         "is_active": key_doc.is_active,
+        "expires_at": key_doc.expires_at.isoformat() if key_doc.expires_at else None,
     }
 
     # Write to Redis cache with 5-minute (300 seconds) expiration
@@ -147,7 +166,6 @@ async def trigger_webhook_with_dedup(
     if not already_set:
         await redis.setex(flag_key, 36 * 3600, "1")
         from app.services.webhook import WebhookService
-        import asyncio
         asyncio.create_task(WebhookService.trigger_webhook(user_id, event, payload_data))
 
 
@@ -162,7 +180,6 @@ async def trigger_webhook_with_cooldown(
     if not already_set:
         await redis.setex(flag_key, cooldown_seconds, "1")
         from app.services.webhook import WebhookService
-        import asyncio
         asyncio.create_task(WebhookService.trigger_webhook(user_id, event, payload_data))
 
 
@@ -185,7 +202,6 @@ async def check_quota_and_limit(
         return True, "", window_limit, window_limit, 0, daily_limit
 
     # 1. Check Daily Quota
-    from datetime import UTC, datetime
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     quota_key = f"rateguard:quota:{prefix}:{today}"
 

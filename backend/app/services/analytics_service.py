@@ -71,15 +71,14 @@ class TelemetryService:
             hourly_requests = []
             for h in range(24):
                 hour_str = f"{h:02d}"
-                val = hourly_data.get(hour_str.encode()) or hourly_data.get(hour_str) or 0
+                val = hourly_data.get(hour_str) or 0
                 hourly_requests.append(int(val))
 
             # 2. Fetch status codes and categorize them
             status_data = await redis.hgetall(status_key) or {}
             status_breakdown = {"200": 0, "429": 0, "403": 0}
-            for code_bytes, count_bytes in status_data.items():
-                code = code_bytes.decode() if isinstance(code_bytes, bytes) else str(code_bytes)
-                count = int(count_bytes)
+            for code, count_str in status_data.items():
+                count = int(count_str)
                 if code in status_breakdown:
                     status_breakdown[code] += count
                 else:
@@ -89,22 +88,20 @@ class TelemetryService:
 
             # 3. Calculate latency percentiles (p50, p90, p99)
             latency_strings = await redis.lrange(latency_key, 0, -1) or []
-            latencies = sorted([float(x.decode() if isinstance(x, bytes) else x) for x in latency_strings])
+            latencies = sorted([float(x) for x in latency_strings])
             
             latency_metrics = {"p50": 0.0, "p90": 0.0, "p99": 0.0}
             if latencies:
                 n = len(latencies)
-                latency_metrics["p50"] = latencies[int(n * 0.5)]
+                latency_metrics["p50"] = latencies[int(math.ceil(n * 0.5)) - 1]
                 latency_metrics["p90"] = latencies[int(math.ceil(n * 0.9)) - 1]
                 latency_metrics["p99"] = latencies[int(math.ceil(n * 0.99)) - 1]
 
             # 4. Compile active keys list
             keys_data = await redis.hgetall(keys_key) or {}
             top_keys = []
-            for key_bytes, count_bytes in keys_data.items():
-                prefix = key_bytes.decode() if isinstance(key_bytes, bytes) else str(key_bytes)
-                count = int(count_bytes)
-                top_keys.append({"prefix": prefix, "requests": count})
+            for key_prefix, count_str in keys_data.items():
+                top_keys.append({"prefix": key_prefix, "requests": int(count_str)})
             
             # Sort top keys descending by request volume
             top_keys = sorted(top_keys, key=lambda x: x["requests"], reverse=True)[:5]

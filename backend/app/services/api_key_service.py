@@ -26,7 +26,24 @@ async def list_api_keys(user: User) -> list[APIKeyOut]:
     return [_to_api_key_out(key) for key in keys]
 
 
+PLAN_KEY_LIMITS: dict[str, int] = {"free": 3, "pro": 20, "enterprise": 100}
+
+
 async def create_api_key(user: User, body: APIKeyCreate) -> APIKeyCreated:
+    plan = str(getattr(user, "plan", "free"))
+    limit = PLAN_KEY_LIMITS.get(plan, 3)
+
+    active_count = await APIKey.find(
+        APIKey.user_id == str(user.id),
+        APIKey.is_active == True,  # noqa: E712
+    ).count()
+
+    if active_count >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Key limit reached for the '{plan}' plan. Maximum {limit} active key(s) allowed. Revoke an existing key or upgrade your plan.",
+        )
+
     raw_key, prefix = APIKey.generate_raw_key()
     key_hash = hash_api_key(raw_key)
 

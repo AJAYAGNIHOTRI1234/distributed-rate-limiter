@@ -11,7 +11,7 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 class WebhookUpdate(BaseModel):
     url: str | None = Field(None, max_length=500)
-    is_active: bool = True
+    is_active: bool | None = None  # None means "don't change"
     events: list[str] = Field(default_factory=lambda: ["quota.approaching", "quota.exceeded", "rate_limit.exceeded"])
 
 
@@ -55,13 +55,14 @@ async def update_webhook_config(body: WebhookUpdate, user: User = Depends(get_cu
         setting = WebhookSetting(
             user_id=str(user.id),
             url=url_val,
-            is_active=body.is_active,
+            is_active=body.is_active if body.is_active is not None else True,
             events=body.events,
         )
         await setting.insert()
     else:
         setting.url = url_val
-        setting.is_active = body.is_active
+        if body.is_active is not None:
+            setting.is_active = body.is_active
         setting.events = body.events
         await setting.save()
 

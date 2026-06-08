@@ -25,5 +25,4 @@ class APIKeyCreated(APIKeyOut):
     raw_key: str
 
 
-class APIKeyRevoke(BaseModel):
-    key_id: str
+

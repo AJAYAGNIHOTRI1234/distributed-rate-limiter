@@ -31,6 +31,11 @@ async def google_login():
     """Redirect the browser to Google's consent screen."""
     state = secrets.token_urlsafe(16)
     redis = get_redis()
+    if not redis:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable. Please try again later.",
+        )
     await redis.setex(f"oauth_state:{state}", OAUTH_STATE_TTL, "1")
     url = get_google_auth_url(state)
     return RedirectResponse(url)
@@ -40,6 +45,11 @@ async def google_login():
 async def google_callback(request: Request, code: str, state: str):
     """Google redirects here with an auth code."""
     redis = get_redis()
+    if not redis:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable. Please try again later.",
+        )
     if not await redis.exists(f"oauth_state:{state}"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired OAuth state.")
     await redis.delete(f"oauth_state:{state}")

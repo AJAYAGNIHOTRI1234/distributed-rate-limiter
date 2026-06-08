@@ -167,6 +167,23 @@
       display:none; align-items:center; justify-content:center; z-index:100;
       backdrop-filter:blur(4px);
     }
+
+    /* Inline confirm dialog */
+    .confirm-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.7);
+      display:none; align-items:center; justify-content:center; z-index:200;
+      backdrop-filter:blur(6px);
+    }
+    .confirm-box {
+      background:var(--bg2); border:1px solid var(--border2);
+      border-radius:var(--radius-xl); padding:28px 30px;
+      width:360px; display:flex; flex-direction:column; gap:16px;
+      animation:modalIn .18s ease;
+      box-shadow:0 24px 64px rgba(0,0,0,.7);
+    }
+    .confirm-title { font-family:var(--display); font-size:15px; font-weight:800; }
+    .confirm-msg { font-size:12.5px; color:var(--muted2); font-family:var(--display); line-height:1.55; }
+    .confirm-actions { display:flex; gap:8px; justify-content:flex-end; }
     .modal {
       background:var(--bg2); border:1px solid var(--border2);
       border-radius:var(--radius-xl); padding:30px;
@@ -386,6 +403,18 @@
   </div>
 </div>
 
+<!-- Inline Confirm Dialog -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirm-title">Are you sure?</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary btn-sm" id="confirm-cancel-btn">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 <script src="../components/api.js"></script>
 <script>
@@ -423,7 +452,7 @@
     const container = document.getElementById("keys-list");
     const active = keys.filter(k=>k.is_active);
     document.getElementById("stat-active").textContent = active.length;
-    document.getElementById("keys-count").textContent = `${keys.length} total`;
+    document.getElementById("keys-count").textContent = `${active.length} active`;
     const totalReq = keys.reduce((s,k)=>s+k.request_count,0);
     document.getElementById("stat-requests").textContent = totalReq.toLocaleString();
     const lastUsed = keys.filter(k=>k.last_used).sort((a,b)=>new Date(b.last_used)-new Date(a.last_used))[0];
@@ -457,9 +486,20 @@
       return;
     }
 
-    container.innerHTML = keys.map(k=>`
+    // Only show active keys — revoked keys vanish immediately after revoke/rotate
+    const visibleKeys = keys.filter(k => k.is_active);
+    if (!visibleKeys.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🔑</div>
+          <div class="empty-title">No active keys</div>
+          <div class="empty-desc">All keys have been revoked. Create a new key to get started.</div>
+        </div>`;
+      return;
+    }
+    container.innerHTML = visibleKeys.map(k=>`
       <div class="key-item" data-id="${k.id}">
-        <div class="key-dot ${k.is_active?'active':'inactive'}"></div>
+        <div class="key-dot active"></div>
         <div class="key-info">
           <div class="key-name">${esc(k.name)}</div>
           <div class="key-preview">${esc(k.key_preview)}</div>
@@ -479,18 +519,65 @@
 
   function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+  // Custom confirm dialog — avoids native confirm() which can be suppressed by browsers
+  function showConfirm(title, msg, onConfirm) {
+    document.getElementById("confirm-title").textContent = title;
+    document.getElementById("confirm-msg").textContent = msg;
+    document.getElementById("confirm-overlay").style.display = "flex";
+    const okBtn = document.getElementById("confirm-ok-btn");
+    const cancelBtn = document.getElementById("confirm-cancel-btn");
+    // Clone buttons to clear any previous listeners
+    const newOk = okBtn.cloneNode(true);
+    const newCancel = cancelBtn.cloneNode(true);
+    okBtn.parentNode.replaceChild(newOk, okBtn);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+    const hide = () => document.getElementById("confirm-overlay").style.display = "none";
+    newOk.addEventListener("click", async () => { hide(); await onConfirm(); });
+    newCancel.addEventListener("click", hide);
+  }
+
+
   async function revokeKey(id) {
-    if (!confirm("Revoke this key? This cannot be undone.")) return;
-    const resp = await apiFetch(`/keys/${id}`,{method:"DELETE"});
-    if (resp && resp.status===204) { toast("Key revoked","success"); loadKeys(); }
-    else toast("Failed to revoke key","error");
+    showConfirm(
+      "Revoke API Key",
+      "This key will stop working immediately and cannot be undone.",
+      async () => {
+        const resp = await apiFetch(`/keys/${id}`, { method: "DELETE" });
+        if (resp && resp.status === 204) {
+          toast("Key revoked", "success");
+          loadKeys();
+        } else {
+          const err = resp ? await resp.json().catch(() => ({})) : {};
+          toast(err.detail || "Failed to revoke key", "error");
+        }
+      }
+    );
   }
 
   async function rotateKey(id) {
-    if (!confirm("Rotate key? The old key stops working immediately.")) return;
-    const resp = await apiFetch(`/keys/${id}/rotate`,{method:"POST"});
-    if (resp && resp.ok) { const d = await resp.json(); showReveal(d.raw_key); loadKeys(); }
-    else toast("Failed to rotate key","error");
+    showConfirm(
+      "Rotate API Key",
+      "The old key stops working immediately. A new key will be shown once — copy it before closing.",
+      async () => {
+        const resp = await apiFetch(`/keys/${id}/rotate`, { method: "POST" });
+        if (resp && resp.ok) {
+          const d = await resp.json();
+          // Reset modal to a clean state before reusing it for the rotate reveal
+          document.getElementById("key-name-input").value = "";
+          document.getElementById("create-fields").style.display = "none";
+          document.getElementById("modal-actions").style.display = "none";
+          document.getElementById("modal-actions-done").style.display = "none";
+          document.getElementById("key-reveal-wrap").style.display = "none";
+          document.getElementById("key-reveal").style.display = "none";
+          document.getElementById("create-modal").style.display = "flex";
+          showReveal(d.raw_key);
+          loadKeys();
+        } else {
+          const err = resp ? await resp.json().catch(() => ({})) : {};
+          toast(err.detail || "Failed to rotate key", "error");
+        }
+      }
+    );
   }
 
   function showReveal(rawKey) {

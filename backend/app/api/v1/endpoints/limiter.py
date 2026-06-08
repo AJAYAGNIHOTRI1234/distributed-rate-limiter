@@ -13,10 +13,16 @@ router = APIRouter(prefix="/limiter", tags=["limiter"])
 async def update_api_key_stats(key_id: str):
     """
     Background task to update request usage metrics for an API key in MongoDB.
+    Resets requests_today automatically when the UTC date changes.
     """
     try:
         key_doc = await APIKey.get(key_id)
         if key_doc:
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
+            if key_doc.requests_today_date != today:
+                # New day — reset the daily counter
+                key_doc.requests_today = 0
+                key_doc.requests_today_date = today
             key_doc.requests_total += 1
             key_doc.requests_today += 1
             key_doc.last_used = datetime.now(UTC)
@@ -34,13 +40,6 @@ async def check_rate_limiting(
     api_key_query: str | None = Query(None, alias="api_key"),
 ):
     start_time = perf_time.perf_counter()
-    """
-    Enforce rate limits on incoming API requests based on plan tiers.
-    Accepts keys via:
-    - X-API-Key header
-    - Authorization: Bearer <key> header
-    - api_key query parameter
-    """
     # 1. Resolve plain API key from supported sources
     plain_key = None
     if x_api_key:

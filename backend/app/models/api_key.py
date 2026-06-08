@@ -21,6 +21,7 @@ class APIKey(Document):
     scopes: list[str] = ["read"]
     is_active: bool = True
     requests_today: int = 0
+    requests_today_date: str | None = None   # YYYY-MM-DD — used to auto-reset requests_today at midnight
     requests_total: int = 0
     last_used: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

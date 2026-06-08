@@ -1,5 +1,5 @@
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class TokenPair(BaseModel):
@@ -35,12 +35,13 @@ class GoogleCallbackResponse(BaseModel):
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str
-    first_name: str
-    last_name: str
+    password: str = Field(..., min_length=8, description="Minimum 8 characters required")
+    first_name: str = Field(..., min_length=1)
+    last_name: str = Field(..., min_length=1)
     plan: str = "free"
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
